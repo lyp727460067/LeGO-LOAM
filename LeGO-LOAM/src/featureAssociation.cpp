@@ -620,15 +620,21 @@ public:
 
     void calculateSmoothness()
     {
+        int num_point  =10;
         int cloudSize = segmentedCloud->points.size();
-        for (int i = 5; i < cloudSize - 5; i++) {
-
-            float diffRange = segInfo.segmentedCloudRange[i-5] + segInfo.segmentedCloudRange[i-4]
-                            + segInfo.segmentedCloudRange[i-3] + segInfo.segmentedCloudRange[i-2]
-                            + segInfo.segmentedCloudRange[i-1] - segInfo.segmentedCloudRange[i] * 10
-                            + segInfo.segmentedCloudRange[i+1] + segInfo.segmentedCloudRange[i+2]
-                            + segInfo.segmentedCloudRange[i+3] + segInfo.segmentedCloudRange[i+4]
-                            + segInfo.segmentedCloudRange[i+5];            
+        for (int i = num_point; i < cloudSize - num_point; i++) {
+            float diffRange  = 0;
+            for(int j = -num_point/2 ;j<num_point/2;j++){
+             diffRange+=   segInfo.segmentedCloudRange[i-j];
+            }
+            diffRange-=segInfo.segmentedCloudRange[i]*11;
+            // float diffRange = segInfo.segmentedCloudRange[i-5] + segInfo.segmentedCloudRange[i-4]
+            //                 + segInfo.segmentedCloudRange[i-3] + segInfo.segmentedCloudRange[i-2]
+            //                 + segInfo.segmentedCloudRange[i-1] - segInfo.segmentedCloudRange[i] * 10
+            //                 + segInfo.segmentedCloudRange[i+1] + segInfo.segmentedCloudRange[i+2]
+            //                 + segInfo.segmentedCloudRange[i+3] + segInfo.segmentedCloudRange[i+4]
+            //                 + segInfo.segmentedCloudRange[i+5];  
+                      
 
             cloudCurvature[i] = diffRange*diffRange;
 

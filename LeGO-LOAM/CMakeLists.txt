@@ -18,11 +18,19 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   nav_msgs
   cloud_msgs
+  ndt_omp
+
+
 )
 
 find_package(GTSAM REQUIRED QUIET)
 find_package(PCL REQUIRED QUIET)
 find_package(OpenCV REQUIRED QUIET)
+set(CMAKE_MODULE_PATH  ${PROJECT_SOURCE_DIR}/../Cmake/)
+
+find_package(Glog REQUIRED)
+find_package(Gflags REQUIRED)
+
 
 catkin_package(
   INCLUDE_DIRS include
@@ -35,14 +43,18 @@ include_directories(
 	${catkin_INCLUDE_DIRS}
 	${PCL_INCLUDE_DIRS}
 	${OpenCV_INCLUDE_DIRS}
-	${GTSAM_INCLUDE_DIR}
+  ${GTSAM_INCLUDE_DIR}
+    ${Glog_INLUCDE_DIRS}
+     ${GFLAGS_INCLUDE_DIR}
 )
 
 link_directories(
-	include
+  include
+    ${GLOG_LIBRARIES}
 	${OpenCV_LIBRARY_DIRS}
 	${PCL_LIBRARY_DIRS}
-	${GTSAM_LIBRARY_DIRS}
+  ${GTSAM_LIBRARY_DIRS}
+  
 )
 
 add_executable(imageProjection src/imageProjection.cpp)
@@ -53,8 +65,13 @@ add_executable(featureAssociation src/featureAssociation.cpp)
 add_dependencies(featureAssociation ${catkin_EXPORTED_TARGETS} cloud_msgs_gencpp)
 target_link_libraries(featureAssociation ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES})
 
-add_executable(mapOptmization src/mapOptmization.cpp)
-target_link_libraries(mapOptmization ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES} gtsam)
+# add_executable(mapOptmization src/mapOptmization.cpp)
+# target_link_libraries(mapOptmization ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES} gtsam)
+add_executable(mapOptmization src/location_map.cpp)
+ target_link_libraries(mapOptmization ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES}
+  ${GLOG_LIBRARIES}
+   ${GFLAGS_LIBRARIES}
+ gtsam)
 
 add_executable(transformFusion src/transformFusion.cpp)
 target_link_libraries(transformFusion ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES})

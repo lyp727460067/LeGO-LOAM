@@ -44,18 +44,18 @@
 #include <thread>
 #include <mutex>
 
-#define PI 3.14159265
+#define PI 3.14159265s
 
 using namespace std;
 
-typedef pcl::PointXYZI  PointType;
+
 
 extern const string pointCloudTopic = "/lslidar_point_cloud";
 //extern const string pointCloudTopic = "/velodyne_points";
-extern const string imuTopic = "/imu/data";
+extern const string imuTopic = "/imu_topic";
 
 // Save pcd
-extern const string fileDirectory = "/tmp/";
+extern const string fileDirectory = "/home/lyp/";
 
 // Using velodyne cloud "ring" channel for image projection (other lidar may have different name for this channel, change "PointXYZIR" below)
 extern const bool useCloudRing = false; // if true, ang_res_y and ang_bottom are not used
@@ -109,7 +109,7 @@ extern const int groundScanInd = 7;
 // extern const float ang_bottom = 16.6+0.1;
 // extern const int groundScanInd = 15;
 
-extern const bool loopClosureEnableFlag = false;
+extern const bool loopClosureEnableFlag = true;
 extern const double mappingProcessInterval = 0.3;
 
 extern const float scanPeriod = 0.1;
@@ -128,7 +128,7 @@ extern const float segmentAlphaY = ang_res_y / 180.0 * M_PI;
 extern const int edgeFeatureNum = 2;
 extern const int surfFeatureNum = 4;
 extern const int sectionsTotal = 6;
-extern const float edgeThreshold = 0.1;
+extern const float edgeThreshold = .1;
 extern const float surfThreshold = 0.1;
 extern const float nearestFeatureSearchSqDist = 25;
 
@@ -183,23 +183,40 @@ struct PointXYZIR
 POINT_CLOUD_REGISTER_POINT_STRUCT  (PointXYZIR,   (float, x, x) (float, y, y) (float, z, z)(uint8_t, intensity, intensity)
     (uint8_t, ring, ring)(double, time, time)
 )
+struct VelodynePointXYZIRT
+{
+    PCL_ADD_POINT4D
+    uint8_t intensity;
+    uint8_t ring;
+    double timestamp;
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+} EIGEN_ALIGN16;
+POINT_CLOUD_REGISTER_POINT_STRUCT (VelodynePointXYZIRT,
+    (float, x, x) (float, y, y) (float, z, z)(uint8_t, intensity, intensity)
+    (uint8_t, ring, ring)(double, timestamp, timestamp)
+
+)
+
+ typedef pcl::PointXYZI  PointType;
+   //typedef VelodynePointXYZIRT PointType;   
 /*
     * A point cloud type that has 6D pose info ([x,y,z,roll,pitch,yaw] intensity is time stamp)
     */
 struct PointXYZIRPYT
 {
     PCL_ADD_POINT4D
-    PCL_ADD_INTENSITY;
+    uint8_t intensity;
+    //PCL_ADD_INTENSITY;
     float roll;
     float pitch;
-    float yaw;
+    float yaw;  
     double time;
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 } EIGEN_ALIGN16;
 
 POINT_CLOUD_REGISTER_POINT_STRUCT (PointXYZIRPYT,
                                    (float, x, x) (float, y, y)
-                                   (float, z, z) (float, intensity, intensity)
+                                   (float, z, z) (uint8_t, intensity, intensity)
                                    (float, roll, roll) (float, pitch, pitch) (float, yaw, yaw)
                                    (double, time, time)
 )

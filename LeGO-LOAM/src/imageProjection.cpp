@@ -490,7 +490,7 @@ class ImageProjection {
     pcl::toROSMsg(*segmentedCloud, laserCloudTemp);
     laserCloudTemp.header.stamp = cloudHeader.stamp;
     laserCloudTemp.header.frame_id = "base_link";
-    std::cout << "segmentedCloud" << segmentedCloud->size() << std::endl;
+   // std::cout << "segmentedCloud" << segmentedCloud->size() << std::endl;
     pubSegmentedCloud.publish(laserCloudTemp);
     // projected full cloud
     if (pubFullCloud.getNumSubscribers() != 0) {

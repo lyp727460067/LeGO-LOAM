@@ -1294,15 +1294,32 @@ public:
         float ty = transformCur[4];
         float tz = transformCur[5];
 
-        float a1 = crx*sry*srz; float a2 = crx*crz*sry; float a3 = srx*sry; float a4 = tx*a1 - ty*a2 - tz*a3;
-        float a5 = srx*srz; float a6 = crz*srx; float a7 = ty*a6 - tz*crx - tx*a5;
-        float a8 = crx*cry*srz; float a9 = crx*cry*crz; float a10 = cry*srx; float a11 = tz*a10 + ty*a9 - tx*a8;
+        float a1 = crx * sry * srz;
+        float a2 = crx * crz * sry;
+        float a3 = srx * sry;
+        float a4 = tx * a1 - ty * a2 - tz * a3;
+        float a5 = srx * srz;
+        float a6 = crz * srx;
+        float a7 = ty * a6 - tz * crx - tx * a5;
+        float a8 = crx * cry * srz;
+        float a9 = crx * cry * crz;
+        float a10 = cry * srx;
+        float a11 = tz * a10 + ty * a9 - tx * a8;
 
-        float b1 = -crz*sry - cry*srx*srz; float b2 = cry*crz*srx - sry*srz;
-        float b5 = cry*crz - srx*sry*srz; float b6 = cry*srz + crz*srx*sry;
+        float b1 = -crz * sry - cry * srx * srz;
+        float b2 = cry * crz * srx - sry * srz;
+        float b5 = cry * crz - srx * sry * srz;
+        float b6 = cry * srz + crz * srx * sry;
 
-        float c1 = -b6; float c2 = b5; float c3 = tx*b6 - ty*b5; float c4 = -crx*crz; float c5 = crx*srz; float c6 = ty*c5 + tx*-c4;
-        float c7 = b2; float c8 = -b1; float c9 = tx*-b2 - ty*-b1;
+        float c1 = -b6;
+        float c2 = b5;
+        float c3 = tx * b6 - ty * b5;
+        float c4 = -crx * crz;
+        float c5 = crx * srz;
+        float c6 = ty * c5 + tx * -c4;
+        float c7 = b2;
+        float c8 = -b1;
+        float c9 = tx * -b2 - ty * -b1;
 
         for (int i = 0; i < pointSelNum; i++) {
 

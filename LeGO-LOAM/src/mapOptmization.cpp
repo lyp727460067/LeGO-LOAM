@@ -42,7 +42,7 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/PriorFactor.h>
-
+#include <cstring> 
 #include "utility.h"
 
 using namespace gtsam;
@@ -230,6 +230,8 @@ class mapOptimization {
   float ctRoll, stRoll, ctPitch, stPitch, ctYaw, stYaw, tInX, tInY, tInZ;
 
  public:
+  
+
   mapOptimization() : nh("~") {
     ISAM2Params parameters;
     parameters.relinearizeThreshold = 0.01;
@@ -411,43 +413,86 @@ class mapOptimization {
     latestFrameID = 0;
   }
 
-  Eigen::Affine3d VectorToAffined(const std::vector<float>& pose_) {
-
-
-
+  Eigen::Affine3d VectorYPRToAffined(const std::vector<float>& pose_) {
+    // transformSum[0] = -pitch;
+    // transformSum[1] = -yaw;
+    // transformSum[2] = roll;
+    //ypr  //rpy
     Eigen::Affine3d affine_pose;
     Eigen::Matrix3d rotation;
-    rotation = Eigen::AngleAxisd(pose_[0], Eigen::Vector3d::UnitX()) *
-               Eigen::AngleAxisd(pose_[1], Eigen::Vector3d::UnitY()) *
-               Eigen::AngleAxisd(pose_[2], Eigen::Vector3d::UnitZ());
+    rotation =  Eigen::AngleAxisd(pose_[0], Eigen::Vector3d::UnitY())*
+                Eigen::AngleAxisd(pose_[1], Eigen::Vector3d::UnitX())*
+                Eigen::AngleAxisd(pose_[2], Eigen::Vector3d::UnitZ()) ;
     Eigen::Translation3d  translatioin{pose_[3], pose_[4], pose_[5]};
-    
+    affine_pose = translatioin*rotation;
+    return affine_pose;
+  }
+    Eigen::Affine3d VectorToAffined(const std::vector<float>& pose_) {
+    // transformSum[0] = -pitch;
+    // transformSum[1] = -yaw;
+    // transformSum[2] = roll;
+    //ypr  //rpy
+    Eigen::Affine3d affine_pose;
+    Eigen::Matrix3d rotation;
+    rotation =  Eigen::AngleAxisd(pose_[0], Eigen::Vector3d::UnitY())*
+                Eigen::AngleAxisd(pose_[1], Eigen::Vector3d::UnitX())*
+                Eigen::AngleAxisd(pose_[2], Eigen::Vector3d::UnitZ()) ;
+    Eigen::Translation3d  translatioin{pose_[3], pose_[4], pose_[5]};
     affine_pose = translatioin*rotation;
     return affine_pose;
   }
   void AffinedToVector(const Eigen::Affine3d& pose, float* f_pose) {}
 
-  void transformAssociateToMap(int) {
-    Eigen::Affine3d local_pose = VectorToAffined(
+  std::vector<float> transformAssociateToMap(int) {
+    
+    Eigen::Affine3d local_pose = VectorYPRToAffined(
         std::vector<float>(std::begin(transformSum), std::end(transformSum)));
-    Eigen::Affine3d local_pose_last = VectorToAffined(std::vector<float>(
+    Eigen::Affine3d local_pose_last = VectorYPRToAffined(std::vector<float>(
         std::begin(transformBefMapped), std::end(transformBefMapped)));
 
-    Eigen::Affine3d globle_pose_last = VectorToAffined(std::vector<float>(
+    Eigen::Affine3d globle_pose_last = VectorYPRToAffined(std::vector<float>(
         std::begin(transformAftMapped), std::end(transformAftMapped)));
+    
+    Eigen::Affine3d camera_to_odom ;
+    // Eigen::Matrix3d rotation;
+    // rotation =  Eigen::AngleAxisd(M_PI_2, Eigen::Vector3d::UnitZ())*
+    //             Eigen::AngleAxisd(-M_PI_2, Eigen::Vector3d::UnitX()) ;
+    auto echo =(local_pose.inverse() * local_pose_last).translation();
+    std::cout<<"echo "<<echo<<std::endl;
+
+
+
 
     Eigen::Affine3d globle_pose =
-        globle_pose_last * local_pose_last.inverse() * local_pose;
+   globle_pose_last *   local_pose_last.inverse() *local_pose     ;
+
+
     float x,y,z,roll,pitch,yaw;
     pcl::getTranslationAndEulerAngles(globle_pose.template cast<float>(), x, y, z, roll, pitch, yaw);
-    transformTobeMapped[0]   = roll;
-    transformTobeMapped[1]   =pitch;
-    transformTobeMapped[2]   =yaw;
-
-
-
+    return  {pitch,yaw, roll ,x,y,z};
   }
+  std::vector<float> GettransformAssociateToMap() {
+    return std::vector<float>(std::begin(transformTobeMapped),
+                              std::end(transformTobeMapped));
+  }
+
+  void SetTransformTobeMapped(float data[]) {
+    std::memcpy(transformSum, data, sizeof(float) * 6);
+    //std::memset(transformBefMapped,0,sizeof(float) * 6);
+
+   for(int i = 0;i<6;i++){
+      transformBefMapped[i] = 1;
+    } 
+    for(int i = 0;i<6;i++){
+      transformAftMapped[i] = 2;
+    }
+  }
+// H_transformToBeMapped = H_transformAftMapped * H_transformBefMapped^-1
+// * H_transformSum
   void transformAssociateToMap() {
+   // transformAssociateToMap(0);
+   // return ;
+
     float x1 =
         cos(transformSum[1]) * (transformBefMapped[3] - transformSum[3]) -
         sin(transformSum[1]) * (transformBefMapped[5] - transformSum[5]);
@@ -463,7 +508,10 @@ class mapOptimization {
     transformIncre[3] = cos(transformSum[2]) * x2 + sin(transformSum[2]) * y2;
     transformIncre[4] = -sin(transformSum[2]) * x2 + cos(transformSum[2]) * y2;
     transformIncre[5] = z2;
-
+    for(int i = 0;i<3;i++){
+      std::cout<<transformIncre[i+3]<<"  ";
+    }
+    std::cout<<std::endl;
     float sbcx = sin(transformSum[0]);
     float cbcx = cos(transformSum[0]);
     float sbcy = sin(transformSum[1]);
@@ -1308,101 +1356,51 @@ class mapOptimization {
     laserCloudSurfTotalLastDSNum = laserCloudSurfTotalLastDS->points.size();
   }
 
+  Eigen::Vector3f PclToEigenVector3f(const PointType &point)
+  {
+    return {point.x,point.y,point.z};
+  }
   void cornerOptimization(int iterCount) {
     updatePointAssociateToMapSinCos();
+
     for (int i = 0; i < laserCloudCornerLastDSNum; i++) {
       pointOri = laserCloudCornerLastDS->points[i];
       pointAssociateToMap(&pointOri, &pointSel);
       kdtreeCornerFromMap->nearestKSearch(pointSel, 5, pointSearchInd,
                                           pointSearchSqDis);
-
       if (pointSearchSqDis[4] < 1.0) {
-        float cx = 0, cy = 0, cz = 0;
-        for (int j = 0; j < 5; j++) {
-          cx += laserCloudCornerFromMapDS->points[pointSearchInd[j]].x;
-          cy += laserCloudCornerFromMapDS->points[pointSearchInd[j]].y;
-          cz += laserCloudCornerFromMapDS->points[pointSearchInd[j]].z;
+        Eigen::Vector3f sum_point = Eigen::Vector3f::Zero();
+        for(int j  = 0;j<5;j++){
+          auto point  = laserCloudCornerFromMapDS->points[pointSearchInd[j]];
+          sum_point+=PclToEigenVector3f(point) ;
         }
-        cx /= 5;
-        cy /= 5;
-        cz /= 5;
-
-        float a11 = 0, a12 = 0, a13 = 0, a22 = 0, a23 = 0, a33 = 0;
+        Eigen::Vector3f mean_point = sum_point/5;
+        Eigen::Matrix<float, 5, 3> points;
         for (int j = 0; j < 5; j++) {
-          float ax =
-              laserCloudCornerFromMapDS->points[pointSearchInd[j]].x - cx;
-          float ay =
-              laserCloudCornerFromMapDS->points[pointSearchInd[j]].y - cy;
-          float az =
-              laserCloudCornerFromMapDS->points[pointSearchInd[j]].z - cz;
-
-          a11 += ax * ax;
-          a12 += ax * ay;
-          a13 += ax * az;
-          a22 += ay * ay;
-          a23 += ay * az;
-          a33 += az * az;
+          auto point = laserCloudCornerFromMapDS->points[pointSearchInd[j]];
+          Eigen::Vector3f conve_point = PclToEigenVector3f(point) - mean_point;
+          points.row(j) = conve_point;
         }
-        a11 /= 5;
-        a12 /= 5;
-        a13 /= 5;
-        a22 /= 5;
-        a23 /= 5;
-        a33 /= 5;
-
-        matA1.at<float>(0, 0) = a11;
-        matA1.at<float>(0, 1) = a12;
-        matA1.at<float>(0, 2) = a13;
-        matA1.at<float>(1, 0) = a12;
-        matA1.at<float>(1, 1) = a22;
-        matA1.at<float>(1, 2) = a23;
-        matA1.at<float>(2, 0) = a13;
-        matA1.at<float>(2, 1) = a23;
-        matA1.at<float>(2, 2) = a33;
-
-        cv::eigen(matA1, matD1, matV1);
-
-        if (matD1.at<float>(0, 0) > 3 * matD1.at<float>(0, 1)) {
-          float x0 = pointSel.x;
-          float y0 = pointSel.y;
-          float z0 = pointSel.z;
-          float x1 = cx + 0.1 * matV1.at<float>(0, 0);
-          float y1 = cy + 0.1 * matV1.at<float>(0, 1);
-          float z1 = cz + 0.1 * matV1.at<float>(0, 2);
-          float x2 = cx - 0.1 * matV1.at<float>(0, 0);
-          float y2 = cy - 0.1 * matV1.at<float>(0, 1);
-          float z2 = cz - 0.1 * matV1.at<float>(0, 2);
-
-          float a012 =
-              sqrt(((x0 - x1) * (y0 - y2) - (x0 - x2) * (y0 - y1)) *
-                       ((x0 - x1) * (y0 - y2) - (x0 - x2) * (y0 - y1)) +
-                   ((x0 - x1) * (z0 - z2) - (x0 - x2) * (z0 - z1)) *
-                       ((x0 - x1) * (z0 - z2) - (x0 - x2) * (z0 - z1)) +
-                   ((y0 - y1) * (z0 - z2) - (y0 - y2) * (z0 - z1)) *
-                       ((y0 - y1) * (z0 - z2) - (y0 - y2) * (z0 - z1)));
-
-          float l12 = sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2) +
-                           (z1 - z2) * (z1 - z2));
-
-          float la =
-              ((y1 - y2) * ((x0 - x1) * (y0 - y2) - (x0 - x2) * (y0 - y1)) +
-               (z1 - z2) * ((x0 - x1) * (z0 - z2) - (x0 - x2) * (z0 - z1))) /
-              a012 / l12;
-
-          float lb =
-              -((x1 - x2) * ((x0 - x1) * (y0 - y2) - (x0 - x2) * (y0 - y1)) -
-                (z1 - z2) * ((y0 - y1) * (z0 - z2) - (y0 - y2) * (z0 - z1))) /
-              a012 / l12;
-
-          float lc =
-              -((x1 - x2) * ((x0 - x1) * (z0 - z2) - (x0 - x2) * (z0 - z1)) +
-                (y1 - y2) * ((y0 - y1) * (z0 - z2) - (y0 - y2) * (z0 - z1))) /
-              a012 / l12;
-
-          float ld2 = a012 / l12;
-
+        Eigen::Matrix3f covariance  =points.transpose()*points/5 ;
+        Eigen::EigenSolver<Eigen::Matrix3f> es(covariance);
+        auto singular = es.eigenvalues().real();
+        auto eigenvector  = es.eigenvectors();
+         if(singular.x()  > 3 * singular.y()){
+             Eigen::Vector3f point0 = PclToEigenVector3f(pointSel);
+          Eigen::Vector3f point1 = mean_point + 0.1 * eigenvector.col(0).real();
+          Eigen::Vector3f point2 = mean_point - 0.1 * eigenvector.col(0).real();
+          float normal = (point0-point1).cross(point0-point2).norm();
+          float normal_p12  = (point1-point2).norm();
+          Eigen::Vector3f  point01  = point0-point1;
+          Eigen::Vector3f  point02  = point0-point2;
+          Eigen::Vector3f  point12  = point1-point2;
+          Eigen::Vector3f  direction = point12.cross(point01.cross(point02));
+     
+          float ld2 = normal_p12/normal;
+          float la = direction.x();
+          float lb = direction.y();
+          float lc = direction.z();
           float s = 1 - 0.9 * fabs(ld2);
-
           coeff.x = s * la;
           coeff.y = s * lb;
           coeff.z = s * lc;

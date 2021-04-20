@@ -30,7 +30,7 @@ set(CMAKE_MODULE_PATH  ${PROJECT_SOURCE_DIR}/../Cmake/)
 
 find_package(Glog REQUIRED)
 find_package(Gflags REQUIRED)
-
+find_package(GTest  REQUIRED)
 
 catkin_package(
   INCLUDE_DIRS include
@@ -54,7 +54,11 @@ link_directories(
 	${OpenCV_LIBRARY_DIRS}
 	${PCL_LIBRARY_DIRS}
   ${GTSAM_LIBRARY_DIRS}
-  
+
+
+  ${GLOG_LIBRARIES}
+  ${GTEST_LIBRARIES}
+
 )
 
 add_executable(imageProjection src/imageProjection.cpp)
@@ -75,3 +79,8 @@ add_executable(mapOptmization src/location_map.cpp)
 
 add_executable(transformFusion src/transformFusion.cpp)
 target_link_libraries(transformFusion ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES})
+
+
+add_executable(mapOptmization_gtest src/mapOptmization_gtest.cpp)
+target_link_libraries(mapOptmization_gtest ${catkin_LIBRARIES}  gtsam -pthread   ${PCL_LIBRARIES}  ${GTEST_LIBRARIES} ${GLOG_LIBRARIES}
+ gtest_main.a )

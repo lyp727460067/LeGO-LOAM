@@ -373,7 +373,7 @@ class mapOptimization {
       transformTobeMapped[i] = 0;
       transformBefMapped[i] = 0;
       transformAftMapped[i] = 0;
-    }
+    }   
 
     imuPointerFront = 0;
     imuPointerLast = -1;
@@ -1368,8 +1368,9 @@ class mapOptimization {
       pointAssociateToMap(&pointOri, &pointSel);
       kdtreeCornerFromMap->nearestKSearch(pointSel, 5, pointSearchInd,
                                           pointSearchSqDis);
-      if (pointSearchSqDis[4] < 1.0) {
+       if (pointSearchSqDis[4] < 1.0) {
         Eigen::Vector3f sum_point = Eigen::Vector3f::Zero();
+        //求取直线方程  用5个点协防差如果第一大比第二大大很多 说明是再直线上
         for(int j  = 0;j<5;j++){
           auto point  = laserCloudCornerFromMapDS->points[pointSearchInd[j]];
           sum_point+=PclToEigenVector3f(point) ;
@@ -1385,6 +1386,8 @@ class mapOptimization {
         Eigen::EigenSolver<Eigen::Matrix3f> es(covariance);
         auto singular = es.eigenvalues().real();
         auto eigenvector  = es.eigenvectors();
+         //求点到直线的距离  
+         
          if(singular.x()  > 3 * singular.y()){
              Eigen::Vector3f point0 = PclToEigenVector3f(pointSel);
           Eigen::Vector3f point1 = mean_point + 0.1 * eigenvector.col(0).real();
@@ -1414,69 +1417,57 @@ class mapOptimization {
       }
     }
   }
+void surfOptimization(int iterCount){
+        updatePointAssociateToMapSinCos();
+        for (int i = 0; i < laserCloudSurfTotalLastDSNum; i++) {
+            pointOri = laserCloudSurfTotalLastDS->points[i];
+            pointAssociateToMap(&pointOri, &pointSel); 
+            kdtreeSurfFromMap->nearestKSearch(pointSel, 5, pointSearchInd, pointSearchSqDis);
+  //     //对所有的面特征, 计算点面残差
+            if (pointSearchSqDis[4] < 1.0) {
+              Eigen::Matrix<float, 5, 3> points;
+              Eigen::Vector3f search_point;
 
-  void surfOptimization(int iterCount) {
-    updatePointAssociateToMapSinCos();
-    for (int i = 0; i < laserCloudSurfTotalLastDSNum; i++) {
-      pointOri = laserCloudSurfTotalLastDS->points[i];
-      pointAssociateToMap(&pointOri, &pointSel);
-      kdtreeSurfFromMap->nearestKSearch(pointSel, 5, pointSearchInd,
-                                        pointSearchSqDis);
+              for (int j = 0; j < 5; j++) {
 
-      if (pointSearchSqDis[4] < 1.0) {
-        for (int j = 0; j < 5; j++) {
-          matA0.at<float>(j, 0) =
-              laserCloudSurfFromMapDS->points[pointSearchInd[j]].x;
-          matA0.at<float>(j, 1) =
-              laserCloudSurfFromMapDS->points[pointSearchInd[j]].y;
-          matA0.at<float>(j, 2) =
-              laserCloudSurfFromMapDS->points[pointSearchInd[j]].z;
+                search_point = PclToEigenVector3f(
+                    laserCloudSurfFromMapDS->points[pointSearchInd[j]]);
+                points.row(j) = (search_point);
+              }
+
+                Eigen::Vector4f surf_normal = Eigen::Vector4f::Ones();
+                surf_normal.head<3>() = points.colPivHouseholderQr().solve(
+                    -Eigen::Matrix<float, 5, 1>::Ones());
+                surf_normal/=surf_normal.head<3>().norm();
+                bool planeValid = true;
+                for (int j = 0; j < 5; j++) {
+                  float dot_normal =
+                      surf_normal.head<3>().transpose() *
+                      PclToEigenVector3f(
+                          laserCloudSurfFromMapDS->points[pointSearchInd[j]]);
+                  if (fabs(dot_normal+surf_normal[3]) > 0.2) {
+                    planeValid = false;
+                    break;
+                    }
+                }
+                  //         //cos theta =  A*B /|A||B|  ? 还有sqrt？ 
+                if (planeValid) {
+                  Eigen::Vector3f point_sel  = PclToEigenVector3f(pointSel);
+                    float pd2 = surf_normal.head<3>().transpose()*point_sel + surf_normal[3];
+                    float s = 1 - 0.9 * fabs(pd2) / sqrt(point_sel.norm());
+                    surf_normal*=s;
+                    coeff.x =surf_normal[0] ;
+                    coeff.y =surf_normal[1] ;
+                    coeff.z =surf_normal[2] ;
+                    coeff.intensity = s * pd2;
+                    if (s > 0.1) {
+                        laserCloudOri->push_back(pointOri);
+                        coeffSel->push_back(coeff);
+                    }
+                }
+            }
         }
-        cv::solve(matA0, matB0, matX0, cv::DECOMP_QR);
-
-        float pa = matX0.at<float>(0, 0);
-        float pb = matX0.at<float>(1, 0);
-        float pc = matX0.at<float>(2, 0);
-        float pd = 1;
-
-        float ps = sqrt(pa * pa + pb * pb + pc * pc);
-        pa /= ps;
-        pb /= ps;
-        pc /= ps;
-        pd /= ps;
-
-        bool planeValid = true;
-        for (int j = 0; j < 5; j++) {
-          if (fabs(pa * laserCloudSurfFromMapDS->points[pointSearchInd[j]].x +
-                   pb * laserCloudSurfFromMapDS->points[pointSearchInd[j]].y +
-                   pc * laserCloudSurfFromMapDS->points[pointSearchInd[j]].z +
-                   pd) > 0.2) {
-            planeValid = false;
-            break;
-          }
-        }
-
-        if (planeValid) {
-          float pd2 = pa * pointSel.x + pb * pointSel.y + pc * pointSel.z + pd;
-
-          float s = 1 - 0.9 * fabs(pd2) /
-                            sqrt(sqrt(pointSel.x * pointSel.x +
-                                      pointSel.y * pointSel.y +
-                                      pointSel.z * pointSel.z));
-
-          coeff.x = s * pa;
-          coeff.y = s * pb;
-          coeff.z = s * pc;
-          coeff.intensity = s * pd2;
-
-          if (s > 0.1) {
-            laserCloudOri->push_back(pointOri);
-            coeffSel->push_back(coeff);
-          }
-        }
-      }
     }
-  }
 
   bool LMOptimization(int iterCount) {
     float srx = sin(transformTobeMapped[0]);
@@ -1485,6 +1476,14 @@ class mapOptimization {
     float cry = cos(transformTobeMapped[1]);
     float srz = sin(transformTobeMapped[2]);
     float crz = cos(transformTobeMapped[2]);
+
+    Eigen::Matrix3f rotation;
+    rotation =  Eigen::AngleAxisf(transformTobeMapped[0], Eigen::Vector3f::UnitY())*
+                Eigen::AngleAxisf(transformTobeMapped[1], Eigen::Vector3f::UnitX())*
+                Eigen::AngleAxisf(transformTobeMapped[2], Eigen::Vector3f::UnitZ()) ;
+
+
+
 
     int laserCloudSelNum = laserCloudOri->points.size();
     if (laserCloudSelNum < 50) {
@@ -1497,9 +1496,20 @@ class mapOptimization {
     cv::Mat matB(laserCloudSelNum, 1, CV_32F, cv::Scalar::all(0));
     cv::Mat matAtB(6, 1, CV_32F, cv::Scalar::all(0));
     cv::Mat matX(6, 1, CV_32F, cv::Scalar::all(0));
+
+
+
+
     for (int i = 0; i < laserCloudSelNum; i++) {
-      pointOri = laserCloudOri->points[i];
-      coeff = coeffSel->points[i];
+     pointOri = laserCloudOri->points[i];
+     coeff = coeffSel->points[i];
+    Eigen::Vector3f derived_theta1  = Eigen::Vector3f{coeff.x,coeff.y,coeff.z};
+    Eigen::Vector3f derived_theta  = rotation*PclToEigenVector3f(pointOri);
+    auto skew_derived_theta = derived_theta.cross(derived_theta1);
+    std::cout<<"skew_derived_theta"<<  skew_derived_theta <<std::endl;   
+
+
+ 
 
       float arx = (crx * sry * srz * pointOri.x + crx * crz * sry * pointOri.y -
                    srx * sry * pointOri.z) *
@@ -1527,7 +1537,7 @@ class mapOptimization {
                   ((sry * srz + cry * crz * srx) * pointOri.x +
                    (crz * sry - cry * srx * srz) * pointOri.y) *
                       coeff.z;
-
+      std::cout<<"arx"<<arx<<"ary"<<ary<<"arz"<<arz<<std::endl;
       matA.at<float>(i, 0) = arx;
       matA.at<float>(i, 1) = ary;
       matA.at<float>(i, 2) = arz;

@@ -628,14 +628,6 @@ public:
              diffRange+=   segInfo.segmentedCloudRange[i-j];
             }
             diffRange-=segInfo.segmentedCloudRange[i]*11;
-            // float diffRange = segInfo.segmentedCloudRange[i-5] + segInfo.segmentedCloudRange[i-4]
-            //                 + segInfo.segmentedCloudRange[i-3] + segInfo.segmentedCloudRange[i-2]
-            //                 + segInfo.segmentedCloudRange[i-1] - segInfo.segmentedCloudRange[i] * 10
-            //                 + segInfo.segmentedCloudRange[i+1] + segInfo.segmentedCloudRange[i+2]
-            //                 + segInfo.segmentedCloudRange[i+3] + segInfo.segmentedCloudRange[i+4]
-            //                 + segInfo.segmentedCloudRange[i+5];  
-                      
-
             cloudCurvature[i] = diffRange*diffRange;
 
             cloudNeighborPicked[i] = 0;

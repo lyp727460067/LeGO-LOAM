@@ -414,37 +414,26 @@ class mapOptimization {
   }
 
   Eigen::Affine3d VectorYPRToAffined(const std::vector<float>& pose_) {
-    // transformSum[0] = -pitch;
-    // transformSum[1] = -yaw;
-    // transformSum[2] = roll;
-    //ypr  //rpy
-    Eigen::Affine3d affine_pose;
-    Eigen::Matrix3d rotation;
-    rotation =  Eigen::AngleAxisd(pose_[0], Eigen::Vector3d::UnitY())*
-                Eigen::AngleAxisd(pose_[1], Eigen::Vector3d::UnitX())*
-                Eigen::AngleAxisd(pose_[2], Eigen::Vector3d::UnitZ()) ;
-    Eigen::Translation3d  translatioin{pose_[3], pose_[4], pose_[5]};
-    affine_pose = translatioin*rotation;
-    return affine_pose;
-  }
-    Eigen::Affine3d VectorToAffined(const std::vector<float>& pose_) {
-    // transformSum[0] = -pitch;
-    // transformSum[1] = -yaw;
-    // transformSum[2] = roll;
-    //ypr  //rpy
-    Eigen::Affine3d affine_pose;
-    Eigen::Matrix3d rotation;
-    rotation =  Eigen::AngleAxisd(pose_[0], Eigen::Vector3d::UnitY())*
-                Eigen::AngleAxisd(pose_[1], Eigen::Vector3d::UnitX())*
-                Eigen::AngleAxisd(pose_[2], Eigen::Vector3d::UnitZ()) ;
-    Eigen::Translation3d  translatioin{pose_[3], pose_[4], pose_[5]};
-    affine_pose = translatioin*rotation;
-    return affine_pose;
-  }
-  void AffinedToVector(const Eigen::Affine3d& pose, float* f_pose) {}
+    // //固定轴 Z X Y   yaw  roll  pitch 
+    // Eigen::Matrix3f rotation;
+    // rotation =Eigen::AngleAxisf(transformTobeMapped[1], Eigen::Vector3f::UnitY()) *
+    //  Eigen::AngleAxisf(transformTobeMapped[0], Eigen::Vector3f::UnitX())*
+    //  Eigen::AngleAxisf(transformTobeMapped[2], Eigen::Vector3f::UnitZ());
 
+
+    Eigen::Affine3d affine_pose;
+    Eigen::Matrix3d rotation;
+    rotation =  Eigen::AngleAxisd(pose_[1], Eigen::Vector3d::UnitY())*
+                Eigen::AngleAxisd(pose_[0], Eigen::Vector3d::UnitX())*
+                Eigen::AngleAxisd(pose_[2], Eigen::Vector3d::UnitZ()) ;
+    Eigen::Translation3d  translatioin{pose_[3], pose_[4], pose_[5]};
+    affine_pose = translatioin*rotation;
+    return affine_pose;
+  }
+ Eigen::Affine3d VectorToAffined(const std::vector<float>& pose_) {
+
+  }
   std::vector<float> transformAssociateToMap(int) {
-    
     Eigen::Affine3d local_pose = VectorYPRToAffined(
         std::vector<float>(std::begin(transformSum), std::end(transformSum)));
     Eigen::Affine3d local_pose_last = VectorYPRToAffined(std::vector<float>(
@@ -452,24 +441,19 @@ class mapOptimization {
 
     Eigen::Affine3d globle_pose_last = VectorYPRToAffined(std::vector<float>(
         std::begin(transformAftMapped), std::end(transformAftMapped)));
-    
-    Eigen::Affine3d camera_to_odom ;
-    // Eigen::Matrix3d rotation;
-    // rotation =  Eigen::AngleAxisd(M_PI_2, Eigen::Vector3d::UnitZ())*
-    //             Eigen::AngleAxisd(-M_PI_2, Eigen::Vector3d::UnitX()) ;
-    auto echo =(local_pose.inverse() * local_pose_last).translation();
-    std::cout<<"echo "<<echo<<std::endl;
-
-
-
-
     Eigen::Affine3d globle_pose =
-   globle_pose_last *   local_pose_last.inverse() *local_pose     ;
+        globle_pose_last * local_pose_last.inverse() * local_pose;
+    float x, y, z, roll, pitch, yaw;
+    pitch = -asin(globle_pose.rotation()(1, 2));
+    roll = atan2(globle_pose.rotation()(0, 2) / cos(pitch),
+                 globle_pose.rotation()(2, 2) / cos(pitch));
+    yaw = atan2(globle_pose.rotation()(1, 0) / cos(pitch),
+                globle_pose.rotation()(1, 1) / cos(pitch));
+    x = globle_pose.translation().x();
+    y = globle_pose.translation().y();
+    z = globle_pose.translation().z();
 
-
-    float x,y,z,roll,pitch,yaw;
-    pcl::getTranslationAndEulerAngles(globle_pose.template cast<float>(), x, y, z, roll, pitch, yaw);
-    return  {pitch,yaw, roll ,x,y,z};
+    return {pitch, roll, yaw, x, y, z};
   }
   std::vector<float> GettransformAssociateToMap() {
     return std::vector<float>(std::begin(transformTobeMapped),
@@ -478,148 +462,14 @@ class mapOptimization {
 
   void SetTransformTobeMapped(float data[]) {
     std::memcpy(transformSum, data, sizeof(float) * 6);
+       std::memcpy(transformBefMapped, data, sizeof(float) * 6); 
+           std::memcpy(transformAftMapped, data, sizeof(float) * 6);
     //std::memset(transformBefMapped,0,sizeof(float) * 6);
-
-   for(int i = 0;i<6;i++){
-      transformBefMapped[i] = 1;
-    } 
-    for(int i = 0;i<6;i++){
-      transformAftMapped[i] = 2;
-    }
   }
-// H_transformToBeMapped = H_transformAftMapped * H_transformBefMapped^-1
-// * H_transformSum
+
   void transformAssociateToMap() {
-   // transformAssociateToMap(0);
-   // return ;
-
-    float x1 =
-        cos(transformSum[1]) * (transformBefMapped[3] - transformSum[3]) -
-        sin(transformSum[1]) * (transformBefMapped[5] - transformSum[5]);
-    float y1 = transformBefMapped[4] - transformSum[4];
-    float z1 =
-        sin(transformSum[1]) * (transformBefMapped[3] - transformSum[3]) +
-        cos(transformSum[1]) * (transformBefMapped[5] - transformSum[5]);
-
-    float x2 = x1;
-    float y2 = cos(transformSum[0]) * y1 + sin(transformSum[0]) * z1;
-    float z2 = -sin(transformSum[0]) * y1 + cos(transformSum[0]) * z1;
-
-    transformIncre[3] = cos(transformSum[2]) * x2 + sin(transformSum[2]) * y2;
-    transformIncre[4] = -sin(transformSum[2]) * x2 + cos(transformSum[2]) * y2;
-    transformIncre[5] = z2;
-    for(int i = 0;i<3;i++){
-      std::cout<<transformIncre[i+3]<<"  ";
-    }
-    std::cout<<std::endl;
-    float sbcx = sin(transformSum[0]);
-    float cbcx = cos(transformSum[0]);
-    float sbcy = sin(transformSum[1]);
-    float cbcy = cos(transformSum[1]);
-    float sbcz = sin(transformSum[2]);
-    float cbcz = cos(transformSum[2]);
-
-    float sblx = sin(transformBefMapped[0]);
-    float cblx = cos(transformBefMapped[0]);
-    float sbly = sin(transformBefMapped[1]);
-    float cbly = cos(transformBefMapped[1]);
-    float sblz = sin(transformBefMapped[2]);
-    float cblz = cos(transformBefMapped[2]);
-
-    float salx = sin(transformAftMapped[0]);
-    float calx = cos(transformAftMapped[0]);
-    float saly = sin(transformAftMapped[1]);
-    float caly = cos(transformAftMapped[1]);
-    float salz = sin(transformAftMapped[2]);
-    float calz = cos(transformAftMapped[2]);
-
-    float srx = -sbcx * (salx * sblx + calx * cblx * salz * sblz +
-                         calx * calz * cblx * cblz) -
-                cbcx * sbcy *
-                    (calx * calz * (cbly * sblz - cblz * sblx * sbly) -
-                     calx * salz * (cbly * cblz + sblx * sbly * sblz) +
-                     cblx * salx * sbly) -
-                cbcx * cbcy *
-                    (calx * salz * (cblz * sbly - cbly * sblx * sblz) -
-                     calx * calz * (sbly * sblz + cbly * cblz * sblx) +
-                     cblx * cbly * salx);
-    transformTobeMapped[0] = -asin(srx);
-
-    float srycrx = sbcx * (cblx * cblz * (caly * salz - calz * salx * saly) -
-                           cblx * sblz * (caly * calz + salx * saly * salz) +
-                           calx * saly * sblx) -
-                   cbcx * cbcy *
-                       ((caly * calz + salx * saly * salz) *
-                            (cblz * sbly - cbly * sblx * sblz) +
-                        (caly * salz - calz * salx * saly) *
-                            (sbly * sblz + cbly * cblz * sblx) -
-                        calx * cblx * cbly * saly) +
-                   cbcx * sbcy *
-                       ((caly * calz + salx * saly * salz) *
-                            (cbly * cblz + sblx * sbly * sblz) +
-                        (caly * salz - calz * salx * saly) *
-                            (cbly * sblz - cblz * sblx * sbly) +
-                        calx * cblx * saly * sbly);
-    float crycrx = sbcx * (cblx * sblz * (calz * saly - caly * salx * salz) -
-                           cblx * cblz * (saly * salz + caly * calz * salx) +
-                           calx * caly * sblx) +
-                   cbcx * cbcy *
-                       ((saly * salz + caly * calz * salx) *
-                            (sbly * sblz + cbly * cblz * sblx) +
-                        (calz * saly - caly * salx * salz) *
-                            (cblz * sbly - cbly * sblx * sblz) +
-                        calx * caly * cblx * cbly) -
-                   cbcx * sbcy *
-                       ((saly * salz + caly * calz * salx) *
-                            (cbly * sblz - cblz * sblx * sbly) +
-                        (calz * saly - caly * salx * salz) *
-                            (cbly * cblz + sblx * sbly * sblz) -
-                        calx * caly * cblx * sbly);
-    transformTobeMapped[1] = atan2(srycrx / cos(transformTobeMapped[0]),
-                                   crycrx / cos(transformTobeMapped[0]));
-
-    float srzcrx = (cbcz * sbcy - cbcy * sbcx * sbcz) *
-                       (calx * salz * (cblz * sbly - cbly * sblx * sblz) -
-                        calx * calz * (sbly * sblz + cbly * cblz * sblx) +
-                        cblx * cbly * salx) -
-                   (cbcy * cbcz + sbcx * sbcy * sbcz) *
-                       (calx * calz * (cbly * sblz - cblz * sblx * sbly) -
-                        calx * salz * (cbly * cblz + sblx * sbly * sblz) +
-                        cblx * salx * sbly) +
-                   cbcx * sbcz *
-                       (salx * sblx + calx * cblx * salz * sblz +
-                        calx * calz * cblx * cblz);
-    float crzcrx = (cbcy * sbcz - cbcz * sbcx * sbcy) *
-                       (calx * calz * (cbly * sblz - cblz * sblx * sbly) -
-                        calx * salz * (cbly * cblz + sblx * sbly * sblz) +
-                        cblx * salx * sbly) -
-                   (sbcy * sbcz + cbcy * cbcz * sbcx) *
-                       (calx * salz * (cblz * sbly - cbly * sblx * sblz) -
-                        calx * calz * (sbly * sblz + cbly * cblz * sblx) +
-                        cblx * cbly * salx) +
-                   cbcx * cbcz *
-                       (salx * sblx + calx * cblx * salz * sblz +
-                        calx * calz * cblx * cblz);
-    transformTobeMapped[2] = atan2(srzcrx / cos(transformTobeMapped[0]),
-                                   crzcrx / cos(transformTobeMapped[0]));
-
-    x1 = cos(transformTobeMapped[2]) * transformIncre[3] -
-         sin(transformTobeMapped[2]) * transformIncre[4];
-    y1 = sin(transformTobeMapped[2]) * transformIncre[3] +
-         cos(transformTobeMapped[2]) * transformIncre[4];
-    z1 = transformIncre[5];
-
-    x2 = x1;
-    y2 = cos(transformTobeMapped[0]) * y1 - sin(transformTobeMapped[0]) * z1;
-    z2 = sin(transformTobeMapped[0]) * y1 + cos(transformTobeMapped[0]) * z1;
-
-    transformTobeMapped[3] =
-        transformAftMapped[3] -
-        (cos(transformTobeMapped[1]) * x2 + sin(transformTobeMapped[1]) * z2);
-    transformTobeMapped[4] = transformAftMapped[4] - y2;
-    transformTobeMapped[5] =
-        transformAftMapped[5] -
-        (-sin(transformTobeMapped[1]) * x2 + cos(transformTobeMapped[1]) * z2);
+    transformAssociateToMap(0);
+    return ;
   }
 
   void transformUpdate() {
@@ -677,19 +527,21 @@ class mapOptimization {
     tY = transformTobeMapped[4];
     tZ = transformTobeMapped[5];
   }
-
+ Eigen::Vector3f PclToEigenVector3f(const PointType &point)
+  {
+    return {point.x,point.y,point.z};
+  }
   void pointAssociateToMap(PointType const* const pi, PointType* const po) {
-    float x1 = cYaw * pi->x - sYaw * pi->y;
-    float y1 = sYaw * pi->x + cYaw * pi->y;
-    float z1 = pi->z;
-
-    float x2 = x1;
-    float y2 = cRoll * y1 - sRoll * z1;
-    float z2 = sRoll * y1 + cRoll * z1;
-
-    po->x = cPitch * x2 + sPitch * z2 + tX;
-    po->y = y2 + tY;
-    po->z = -sPitch * x2 + cPitch * z2 + tZ;
+    //固定轴 Z X Y   yaw  roll  pitch 
+    Eigen::Matrix3f rotation;
+    rotation =Eigen::AngleAxisf(transformTobeMapped[1], Eigen::Vector3f::UnitY()) *
+                              Eigen::AngleAxisf(transformTobeMapped[0], Eigen::Vector3f::UnitX())*
+                              Eigen::AngleAxisf(transformTobeMapped[2], Eigen::Vector3f::UnitZ());
+    Eigen::Vector3f point{pi->x,pi->y,pi->z};
+    Eigen::Vector3f rotatedyxz  =rotation*point; 
+    po->x = rotatedyxz.x() + tX;
+    po->y = rotatedyxz.y() + tY;
+    po->z = rotatedyxz.z() + tZ;
     po->intensity = pi->intensity;
   }
 
@@ -1356,10 +1208,7 @@ class mapOptimization {
     laserCloudSurfTotalLastDSNum = laserCloudSurfTotalLastDS->points.size();
   }
 
-  Eigen::Vector3f PclToEigenVector3f(const PointType &point)
-  {
-    return {point.x,point.y,point.z};
-  }
+ 
   void cornerOptimization(int iterCount) {
     updatePointAssociateToMapSinCos();
 
@@ -1468,21 +1317,28 @@ void surfOptimization(int iterCount){
             }
         }
     }
-
+  Eigen::Matrix3f VectorHat(Eigen::Vector3f  v)
+  {
+    Eigen::Matrix3f hat;
+    hat << 0, -v[2], v[1],
+         v[2], 0, -v[0], 
+        -v[1], v[0], 0;
+    return hat;
+  }
   bool LMOptimization(int iterCount) {
-    float srx = sin(transformTobeMapped[0]);
-    float crx = cos(transformTobeMapped[0]);
-    float sry = sin(transformTobeMapped[1]);
-    float cry = cos(transformTobeMapped[1]);
-    float srz = sin(transformTobeMapped[2]);
-    float crz = cos(transformTobeMapped[2]);
-
+    //roll pitch yaw
+    //固定轴 Z X Y   yaw  roll  pitch 
     Eigen::Matrix3f rotation;
-    rotation =  Eigen::AngleAxisf(transformTobeMapped[0], Eigen::Vector3f::UnitY())*
-                Eigen::AngleAxisf(transformTobeMapped[1], Eigen::Vector3f::UnitX())*
-                Eigen::AngleAxisf(transformTobeMapped[2], Eigen::Vector3f::UnitZ()) ;
-
-
+    Eigen::Matrix3f rotationx;
+    Eigen::Matrix3f rotationy;
+    Eigen::Matrix3f rotationz;
+    rotationy =
+        Eigen::AngleAxisf(transformTobeMapped[1], Eigen::Vector3f::UnitY());
+    rotationx =
+        Eigen::AngleAxisf(transformTobeMapped[0], Eigen::Vector3f::UnitX());
+    rotationz =
+        Eigen::AngleAxisf(transformTobeMapped[2], Eigen::Vector3f::UnitZ());
+    rotation = rotationy*rotationx *rotationz;
 
 
     int laserCloudSelNum = laserCloudOri->points.size();
@@ -1497,50 +1353,21 @@ void surfOptimization(int iterCount){
     cv::Mat matAtB(6, 1, CV_32F, cv::Scalar::all(0));
     cv::Mat matX(6, 1, CV_32F, cv::Scalar::all(0));
 
-
-
-
     for (int i = 0; i < laserCloudSelNum; i++) {
      pointOri = laserCloudOri->points[i];
      coeff = coeffSel->points[i];
-    Eigen::Vector3f derived_theta1  = Eigen::Vector3f{coeff.x,coeff.y,coeff.z};
-    Eigen::Vector3f derived_theta  = rotation*PclToEigenVector3f(pointOri);
-    auto skew_derived_theta = derived_theta.cross(derived_theta1);
-    std::cout<<"skew_derived_theta"<<  skew_derived_theta <<std::endl;   
+    Eigen::Vector3f derived_coeff  = Eigen::Vector3f{coeff.x,coeff.y,coeff.z};
+    Eigen::Vector3f rotated_point  = rotation*PclToEigenVector3f(pointOri);
+    Eigen::Matrix3f s ;
+    s.col(2) =  rotationy*rotationx * Eigen::Vector3f::UnitZ();  
+    s.col(1) =  Eigen::Vector3f::UnitY();       
+    s.col(0) =  rotationy * Eigen::Vector3f::UnitX() ;  
+    auto derievd_theta = -VectorHat(rotated_point)*s;
 
-
- 
-
-      float arx = (crx * sry * srz * pointOri.x + crx * crz * sry * pointOri.y -
-                   srx * sry * pointOri.z) *
-                      coeff.x +
-                  (-srx * srz * pointOri.x - crz * srx * pointOri.y -
-                   crx * pointOri.z) *
-                      coeff.y +
-                  (crx * cry * srz * pointOri.x + crx * cry * crz * pointOri.y -
-                   cry * srx * pointOri.z) *
-                      coeff.z;
-
-      float ary = ((cry * srx * srz - crz * sry) * pointOri.x +
-                   (sry * srz + cry * crz * srx) * pointOri.y +
-                   crx * cry * pointOri.z) *
-                      coeff.x +
-                  ((-cry * crz - srx * sry * srz) * pointOri.x +
-                   (cry * srz - crz * srx * sry) * pointOri.y -
-                   crx * sry * pointOri.z) *
-                      coeff.z;
-
-      float arz = ((crz * srx * sry - cry * srz) * pointOri.x +
-                   (-cry * crz - srx * sry * srz) * pointOri.y) *
-                      coeff.x +
-                  (crx * crz * pointOri.x - crx * srz * pointOri.y) * coeff.y +
-                  ((sry * srz + cry * crz * srx) * pointOri.x +
-                   (crz * sry - cry * srx * srz) * pointOri.y) *
-                      coeff.z;
-      std::cout<<"arx"<<arx<<"ary"<<ary<<"arz"<<arz<<std::endl;
-      matA.at<float>(i, 0) = arx;
-      matA.at<float>(i, 1) = ary;
-      matA.at<float>(i, 2) = arz;
+    auto skew_derived_theta =derived_coeff.transpose()*derievd_theta;
+      matA.at<float>(i, 0) = skew_derived_theta[0];
+      matA.at<float>(i, 1) = skew_derived_theta[1];
+      matA.at<float>(i, 2) = skew_derived_theta[2];
       matA.at<float>(i, 3) = coeff.x;
       matA.at<float>(i, 4) = coeff.y;
       matA.at<float>(i, 5) = coeff.z;
@@ -1571,13 +1398,13 @@ void surfOptimization(int iterCount){
           break;
         }
       }
-      matP = matV.inv() * matV2;
-    }
+        matP = matV.inv() * matV2;
+      }
 
-    if (isDegenerate) {
-      cv::Mat matX2(6, 1, CV_32F, cv::Scalar::all(0));
-      matX.copyTo(matX2);
-      matX = matP * matX2;
+      if (isDegenerate) {
+        cv::Mat matX2(6, 1, CV_32F, cv::Scalar::all(0));
+        matX.copyTo(matX2);
+        matX = matP * matX2;
     }
 
     transformTobeMapped[0] += matX.at<float>(0, 0);

@@ -129,7 +129,7 @@ extern const int edgeFeatureNum = 2;
 extern const int surfFeatureNum = 4;
 extern const int sectionsTotal = 6;
 extern const float edgeThreshold = .1;
-extern const float surfThreshold = 0.1;
+extern const float surfThreshold = 10.5;
 extern const float nearestFeatureSearchSqDist = 25;
 
 

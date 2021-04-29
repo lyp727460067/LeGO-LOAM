@@ -534,6 +534,7 @@ class mapOptimization {
     return {point.x, point.y, point.z};
   }
   void pointAssociateToMap(PointType const* const pi, PointType* const po) {
+    
     //固定轴 Z X Y   yaw  roll  pitch
     Eigen::Matrix3f rotation;
     rotation =
@@ -1423,108 +1424,6 @@ class mapOptimization {
     }
     return false;
   }
-
-  // bool LMOptimization(int iterCount) {
-  //   //roll pitch yaw
-  //   //固定轴 Z X Y   yaw  roll  pitch
-  //   Eigen::Matrix3f rotation;
-  //   Eigen::Matrix3f rotationx;
-  //   Eigen::Matrix3f rotationy;
-  //   Eigen::Matrix3f rotationz;
-  //   rotationy =
-  //       Eigen::AngleAxisf(transformTobeMapped[1], Eigen::Vector3f::UnitY());
-  //   rotationx =
-  //       Eigen::AngleAxisf(transformTobeMapped[0], Eigen::Vector3f::UnitX());
-  //   rotationz =
-  //       Eigen::AngleAxisf(transformTobeMapped[2], Eigen::Vector3f::UnitZ());
-  //   rotation = rotationy*rotationx *rotationz;
-
-  //   int laserCloudSelNum = laserCloudOri->points.size();
-  //   if (laserCloudSelNum < 50) {
-  //     return false;
-  //   }
-
-  //   cv::Mat matA(laserCloudSelNum, 6, CV_32F, cv::Scalar::all(0));
-  //   cv::Mat matAt(6, laserCloudSelNum, CV_32F, cv::Scalar::all(0));
-  //   cv::Mat matAtA(6, 6, CV_32F, cv::Scalar::all(0));
-  //   cv::Mat matB(laserCloudSelNum, 1, CV_32F, cv::Scalar::all(0));
-  //   cv::Mat matAtB(6, 1, CV_32F, cv::Scalar::all(0));
-  //   cv::Mat matX(6, 1, CV_32F, cv::Scalar::all(0));
-
-  //   for (int i = 0; i < laserCloudSelNum; i++) {
-  //     pointOri = laserCloudOri->points[i];
-  //     coeff = coeffSel->points[i];
-  //     Eigen::Vector3f derived_coeff =
-  //         Eigen::Vector3f{coeff.x, coeff.y, coeff.z};
-  //     Eigen::Vector3f rotated_point = rotation *
-  //     PclToEigenVector3f(pointOri); Eigen::Matrix3f s; s.col(2) = rotationy *
-  //     rotationx * Eigen::Vector3f::UnitZ(); s.col(1) =
-  //     Eigen::Vector3f::UnitY(); s.col(0) = rotationy *
-  //     Eigen::Vector3f::UnitX(); auto derievd_theta =
-  //     -VectorHat(rotated_point) * s;
-
-  //     auto skew_derived_theta = derived_coeff.transpose() * derievd_theta;
-  //     matA.at<float>(i, 0) = skew_derived_theta[0];
-  //     matA.at<float>(i, 1) = skew_derived_theta[1];
-  //     matA.at<float>(i, 2) = skew_derived_theta[2];
-  //     matA.at<float>(i, 3) = coeff.x;
-  //     matA.at<float>(i, 4) = coeff.y;
-  //     matA.at<float>(i, 5) = coeff.z;
-  //     matB.at<float>(i, 0) = -coeff.intensity;
-  //   }
-  //   cv::transpose(matA, matAt);
-  //   matAtA = matAt * matA;
-  //   matAtB = matAt * matB;
-  //   cv::solve(matAtA, matAtB, matX, cv::DECOMP_QR);
-
-  //   if (iterCount == 0) {
-  //     cv::Mat matE(1, 6, CV_32F, cv::Scalar::all(0));
-  //     cv::Mat matV(6, 6, CV_32F, cv::Scalar::all(0));
-  //     cv::Mat matV2(6, 6, CV_32F, cv::Scalar::all(0));
-
-  //     cv::eigen(matAtA, matE, matV);
-  //     matV.copyTo(matV2);
-
-  //     isDegenerate = false;
-  //     float eignThre[6] = {100, 100, 100, 100, 100, 100};
-  //     for (int i = 5; i >= 0; i--) {
-  //       if (matE.at<float>(0, i) < eignThre[i]) {
-  //         for (int j = 0; j < 6; j++) {
-  //           matV2.at<float>(i, j) = 0;
-  //         }
-  //         isDegenerate = true;
-  //       } else {
-  //         break;
-  //       }
-  //     }
-  //       matP = matV.inv() * matV2;
-  //     }
-
-  //     if (isDegenerate) {
-  //       cv::Mat matX2(6, 1, CV_32F, cv::Scalar::all(0));
-  //       matX.copyTo(matX2);
-  //       matX = matP * matX2;
-  //   }
-
-  //   transformTobeMapped[0] += matX.at<float>(0, 0);
-  //   transformTobeMapped[1] += matX.at<float>(1, 0);
-  //   transformTobeMapped[2] += matX.at<float>(2, 0);
-  //   transformTobeMapped[3] += matX.at<float>(3, 0);
-  //   transformTobeMapped[4] += matX.at<float>(4, 0);
-  //   transformTobeMapped[5] += matX.at<float>(5, 0);
-
-  //   float deltaR = sqrt(pow(pcl::rad2deg(matX.at<float>(0, 0)), 2) +
-  //                       pow(pcl::rad2deg(matX.at<float>(1, 0)), 2) +
-  //                       pow(pcl::rad2deg(matX.at<float>(2, 0)), 2));
-  //   float deltaT = sqrt(pow(matX.at<float>(3, 0) * 100, 2) +
-  //                       pow(matX.at<float>(4, 0) * 100, 2) +
-  //                       pow(matX.at<float>(5, 0) * 100, 2));
-
-  //   if (deltaR < 0.05 && deltaT < 0.05) {
-  //     return true;
-  //   }
-  //   return false;
-  // }
 
   void scan2MapOptimization() {
     if (laserCloudCornerFromMapDSNum > 10 && laserCloudSurfFromMapDSNum > 100) {

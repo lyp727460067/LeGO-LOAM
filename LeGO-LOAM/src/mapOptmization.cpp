@@ -42,13 +42,15 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/slam/PriorFactor.h>
-#include <cstring> 
+
+#include <cstring>
+
 #include "utility.h"
 
 using namespace gtsam;
 
 class mapOptimization {
-  protected:
+ protected:
   NonlinearFactorGraph gtSAMgraph;
   Values initialEstimate;
   Values optimizedEstimate;
@@ -230,8 +232,6 @@ class mapOptimization {
   float ctRoll, stRoll, ctPitch, stPitch, ctYaw, stYaw, tInX, tInY, tInZ;
 
  public:
-  
-
   mapOptimization() : nh("~") {
     ISAM2Params parameters;
     parameters.relinearizeThreshold = 0.01;
@@ -373,7 +373,7 @@ class mapOptimization {
       transformTobeMapped[i] = 0;
       transformBefMapped[i] = 0;
       transformAftMapped[i] = 0;
-    }   
+    }
 
     imuPointerFront = 0;
     imuPointerLast = -1;
@@ -414,25 +414,23 @@ class mapOptimization {
   }
 
   Eigen::Affine3d VectorYPRToAffined(const std::vector<float>& pose_) {
-    // //固定轴 Z X Y   yaw  roll  pitch 
+    // //固定轴 Z X Y   yaw  roll  pitch
     // Eigen::Matrix3f rotation;
-    // rotation =Eigen::AngleAxisf(transformTobeMapped[1], Eigen::Vector3f::UnitY()) *
+    // rotation =Eigen::AngleAxisf(transformTobeMapped[1],
+    // Eigen::Vector3f::UnitY()) *
     //  Eigen::AngleAxisf(transformTobeMapped[0], Eigen::Vector3f::UnitX())*
     //  Eigen::AngleAxisf(transformTobeMapped[2], Eigen::Vector3f::UnitZ());
 
-
     Eigen::Affine3d affine_pose;
     Eigen::Matrix3d rotation;
-    rotation =  Eigen::AngleAxisd(pose_[1], Eigen::Vector3d::UnitY())*
-                Eigen::AngleAxisd(pose_[0], Eigen::Vector3d::UnitX())*
-                Eigen::AngleAxisd(pose_[2], Eigen::Vector3d::UnitZ()) ;
-    Eigen::Translation3d  translatioin{pose_[3], pose_[4], pose_[5]};
-    affine_pose = translatioin*rotation;
+    rotation = Eigen::AngleAxisd(pose_[1], Eigen::Vector3d::UnitY()) *
+               Eigen::AngleAxisd(pose_[0], Eigen::Vector3d::UnitX()) *
+               Eigen::AngleAxisd(pose_[2], Eigen::Vector3d::UnitZ());
+    Eigen::Translation3d translatioin{pose_[3], pose_[4], pose_[5]};
+    affine_pose = translatioin * rotation;
     return affine_pose;
   }
- Eigen::Affine3d VectorToAffined(const std::vector<float>& pose_) {
-
-  }
+  Eigen::Affine3d VectorToAffined(const std::vector<float>& pose_) {}
   std::vector<float> transformAssociateToMap(int) {
     Eigen::Affine3d local_pose = VectorYPRToAffined(
         std::vector<float>(std::begin(transformSum), std::end(transformSum)));
@@ -467,14 +465,14 @@ class mapOptimization {
 
   void SetTransformTobeMapped(float data[]) {
     std::memcpy(transformSum, data, sizeof(float) * 6);
-       std::memcpy(transformBefMapped, data, sizeof(float) * 6); 
-           std::memcpy(transformAftMapped, data, sizeof(float) * 6);
-    //std::memset(transformBefMapped,0,sizeof(float) * 6);
+    std::memcpy(transformBefMapped, data, sizeof(float) * 6);
+    std::memcpy(transformAftMapped, data, sizeof(float) * 6);
+    // std::memset(transformBefMapped,0,sizeof(float) * 6);
   }
 
   void transformAssociateToMap() {
     transformAssociateToMap(0);
-    return ;
+    return;
   }
 
   void transformUpdate() {
@@ -532,18 +530,18 @@ class mapOptimization {
     tY = transformTobeMapped[4];
     tZ = transformTobeMapped[5];
   }
- Eigen::Vector3f PclToEigenVector3f(const PointType &point)
-  {
-    return {point.x,point.y,point.z};
+  Eigen::Vector3f PclToEigenVector3f(const PointType& point) {
+    return {point.x, point.y, point.z};
   }
   void pointAssociateToMap(PointType const* const pi, PointType* const po) {
-    //固定轴 Z X Y   yaw  roll  pitch 
+    //固定轴 Z X Y   yaw  roll  pitch
     Eigen::Matrix3f rotation;
-    rotation =Eigen::AngleAxisf(transformTobeMapped[1], Eigen::Vector3f::UnitY()) *
-                              Eigen::AngleAxisf(transformTobeMapped[0], Eigen::Vector3f::UnitX())*
-                              Eigen::AngleAxisf(transformTobeMapped[2], Eigen::Vector3f::UnitZ());
-    Eigen::Vector3f point{pi->x,pi->y,pi->z};
-    Eigen::Vector3f rotatedyxz  =rotation*point; 
+    rotation =
+        Eigen::AngleAxisf(transformTobeMapped[1], Eigen::Vector3f::UnitY()) *
+        Eigen::AngleAxisf(transformTobeMapped[0], Eigen::Vector3f::UnitX()) *
+        Eigen::AngleAxisf(transformTobeMapped[2], Eigen::Vector3f::UnitZ());
+    Eigen::Vector3f point{pi->x, pi->y, pi->z};
+    Eigen::Vector3f rotatedyxz = rotation * point;
     po->x = rotatedyxz.x() + tX;
     po->y = rotatedyxz.y() + tY;
     po->z = rotatedyxz.z() + tZ;
@@ -757,7 +755,7 @@ class mapOptimization {
       rate.sleep();
       publishGlobalMap();
     }
-    std::cout<<"visualizeGlobalMapThread"<<std::endl;
+    std::cout << "visualizeGlobalMapThread" << std::endl;
     // save final point cloud
     // pcl::io::savePCDFileASCII(fileDirectory + "finalCloud.pcd",
     //                           *globalMapKeyFramesDS);
@@ -774,7 +772,8 @@ class mapOptimization {
         new pcl::PointCloud<PointType>());
     pcl::PointCloud<PointType>::Ptr surfaceMapCloudDS(
         new pcl::PointCloud<PointType>());
-    std::cout<<"cornerCloudKeyFrames.size()"<<cornerCloudKeyFrames.size()<<std::endl;
+    std::cout << "cornerCloudKeyFrames.size()" << cornerCloudKeyFrames.size()
+              << std::endl;
     for (int i = 0; i < cornerCloudKeyFrames.size(); i++) {
       *cornerMapCloud += *transformPointCloud(cornerCloudKeyFrames[i],
                                               &cloudKeyPoses6D->points[i]);
@@ -782,40 +781,34 @@ class mapOptimization {
                                                &cloudKeyPoses6D->points[i]);
       *surfaceMapCloud += *transformPointCloud(outlierCloudKeyFrames[i],
                                                &cloudKeyPoses6D->points[i]);
-       std::cout<<"i"<<i<<std::endl;
+      std::cout << "i" << i << std::endl;
     }
 
-    PointTypePose  camere_to_map;
-    camere_to_map.yaw= -1.560796327;
-    camere_to_map.pitch= -1.560796327;
-    camere_to_map.roll= 0;
+    PointTypePose camere_to_map;
+    camere_to_map.yaw = -1.560796327;
+    camere_to_map.pitch = -1.560796327;
+    camere_to_map.roll = 0;
     camere_to_map.x = 0;
     camere_to_map.y = 0;
     camere_to_map.z = 0;
 
-
-   // for (int i = 0; i < cornerCloudKeyFrames.size(); i++) {
-      // *cornerMapCloud = *transformPointCloud(cornerMapCloud,
-      //                                         &camere_to_map);
-      // *surfaceMapCloud = *transformPointCloud(surfaceMapCloud,
-      //                                          &camere_to_map);
+    // for (int i = 0; i < cornerCloudKeyFrames.size(); i++) {
+    // *cornerMapCloud = *transformPointCloud(cornerMapCloud,
+    //                                         &camere_to_map);
+    // *surfaceMapCloud = *transformPointCloud(surfaceMapCloud,
+    //                                          &camere_to_map);
     //}
-
 
     // downSizeFilterCorner.setInputCloud(cornerMapCloud);
     // downSizeFilterCorner.filter(*cornerMapCloudDS);
     // downSizeFilterSurf.setInputCloud(surfaceMapCloud);
     // downSizeFilterSurf.filter(*surfaceMapCloudDS);
 
-    pcl::io::savePCDFileASCII(fileDirectory + "cornerMap.pcd",
-                              *cornerMapCloud);
+    pcl::io::savePCDFileASCII(fileDirectory + "cornerMap.pcd", *cornerMapCloud);
     pcl::io::savePCDFileASCII(fileDirectory + "surfaceMap.pcd",
                               *surfaceMapCloud);
     pcl::io::savePCDFileASCII(fileDirectory + "trajectory.pcd",
                               *cloudKeyPoses3D);
-
-
-
   }
 
   void publishGlobalMap() {
@@ -948,7 +941,7 @@ class mapOptimization {
     return true;
   }
 
-   virtual void performLoopClosure() {
+  virtual void performLoopClosure() {
     if (cloudKeyPoses3D->points.empty() == true) return;
     std::cout << "start  performLoopClosure" << std::endl;
     // try to find close key frame if there are any
@@ -1213,7 +1206,6 @@ class mapOptimization {
     laserCloudSurfTotalLastDSNum = laserCloudSurfTotalLastDS->points.size();
   }
 
- 
   void cornerOptimization(int iterCount) {
     updatePointAssociateToMapSinCos();
 
@@ -1222,38 +1214,38 @@ class mapOptimization {
       pointAssociateToMap(&pointOri, &pointSel);
       kdtreeCornerFromMap->nearestKSearch(pointSel, 5, pointSearchInd,
                                           pointSearchSqDis);
-       if (pointSearchSqDis[4] < 1.0) {
+      if (pointSearchSqDis[4] < 1.0) {
         Eigen::Vector3f sum_point = Eigen::Vector3f::Zero();
         //求取直线方程  用5个点协防差如果第一大比第二大大很多 说明是再直线上
-        for(int j  = 0;j<5;j++){
-          auto point  = laserCloudCornerFromMapDS->points[pointSearchInd[j]];
-          sum_point+=PclToEigenVector3f(point) ;
+        for (int j = 0; j < 5; j++) {
+          auto point = laserCloudCornerFromMapDS->points[pointSearchInd[j]];
+          sum_point += PclToEigenVector3f(point);
         }
-        Eigen::Vector3f mean_point = sum_point/5;
+        Eigen::Vector3f mean_point = sum_point / 5;
         Eigen::Matrix<float, 5, 3> points;
         for (int j = 0; j < 5; j++) {
           auto point = laserCloudCornerFromMapDS->points[pointSearchInd[j]];
           Eigen::Vector3f conve_point = PclToEigenVector3f(point) - mean_point;
           points.row(j) = conve_point;
         }
-        Eigen::Matrix3f covariance  =points.transpose()*points/5 ;
+        Eigen::Matrix3f covariance = points.transpose() * points / 5;
         Eigen::EigenSolver<Eigen::Matrix3f> es(covariance);
         auto singular = es.eigenvalues().real();
-        auto eigenvector  = es.eigenvectors();
-         //求点到直线的距离  
-         
-         if(singular.x()  > 3 * singular.y()){
-             Eigen::Vector3f point0 = PclToEigenVector3f(pointSel);
+        auto eigenvector = es.eigenvectors();
+        //求点到直线的距离
+
+        if (singular.x() > 3 * singular.y()) {
+          Eigen::Vector3f point0 = PclToEigenVector3f(pointSel);
           Eigen::Vector3f point1 = mean_point + 0.1 * eigenvector.col(0).real();
           Eigen::Vector3f point2 = mean_point - 0.1 * eigenvector.col(0).real();
-          float normal = (point0-point1).cross(point0-point2).norm();
-          float normal_p12  = (point1-point2).norm();
-          Eigen::Vector3f  point01  = point0-point1;
-          Eigen::Vector3f  point02  = point0-point2;
-          Eigen::Vector3f  point12  = point1-point2;
-          Eigen::Vector3f  direction = point12.cross(point01.cross(point02));
-     
-          float ld2 = normal_p12/normal;
+          float normal = (point0 - point1).cross(point0 - point2).norm();
+          float normal_p12 = (point1 - point2).norm();
+          Eigen::Vector3f point01 = point0 - point1;
+          Eigen::Vector3f point02 = point0 - point2;
+          Eigen::Vector3f point12 = point1 - point2;
+          Eigen::Vector3f direction = point12.cross(point01.cross(point02));
+
+          float ld2 = normal_p12 / normal;
           float la = direction.x();
           float lb = direction.y();
           float lc = direction.z();
@@ -1271,69 +1263,66 @@ class mapOptimization {
       }
     }
   }
-void surfOptimization(int iterCount){
-        updatePointAssociateToMapSinCos();
-        for (int i = 0; i < laserCloudSurfTotalLastDSNum; i++) {
-            pointOri = laserCloudSurfTotalLastDS->points[i];
-            pointAssociateToMap(&pointOri, &pointSel); 
-            kdtreeSurfFromMap->nearestKSearch(pointSel, 5, pointSearchInd, pointSearchSqDis);
-  //     //对所有的面特征, 计算点面残差
-            if (pointSearchSqDis[4] < 1.0) {
-              Eigen::Matrix<float, 5, 3> points;
-              Eigen::Vector3f search_point;
+  void surfOptimization(int iterCount) {
+    updatePointAssociateToMapSinCos();
+    for (int i = 0; i < laserCloudSurfTotalLastDSNum; i++) {
+      pointOri = laserCloudSurfTotalLastDS->points[i];
+      pointAssociateToMap(&pointOri, &pointSel);
+      kdtreeSurfFromMap->nearestKSearch(pointSel, 5, pointSearchInd,
+                                        pointSearchSqDis);
+      //     //对所有的面特征, 计算点面残差
+      if (pointSearchSqDis[4] < 1.0) {
+        Eigen::Matrix<float, 5, 3> points;
+        Eigen::Vector3f search_point;
 
-              for (int j = 0; j < 5; j++) {
-
-                search_point = PclToEigenVector3f(
-                    laserCloudSurfFromMapDS->points[pointSearchInd[j]]);
-                points.row(j) = (search_point);
-              }
-
-                Eigen::Vector4f surf_normal = Eigen::Vector4f::Ones();
-                surf_normal.head<3>() = points.colPivHouseholderQr().solve(
-                    -Eigen::Matrix<float, 5, 1>::Ones());
-                surf_normal/=surf_normal.head<3>().norm();
-                bool planeValid = true;
-                for (int j = 0; j < 5; j++) {
-                  float dot_normal =
-                      surf_normal.head<3>().transpose() *
-                      PclToEigenVector3f(
-                          laserCloudSurfFromMapDS->points[pointSearchInd[j]]);
-                  if (fabs(dot_normal+surf_normal[3]) > 0.2) {
-                    planeValid = false;
-                    break;
-                    }
-                }
-                  //         //cos theta =  A*B /|A||B|  ? 还有sqrt？ 
-                if (planeValid) {
-                  Eigen::Vector3f point_sel  = PclToEigenVector3f(pointSel);
-                    float pd2 = surf_normal.head<3>().transpose()*point_sel + surf_normal[3];
-                    float s = 1 - 0.9 * fabs(pd2) / sqrt(point_sel.norm());
-                    surf_normal*=s;
-                    coeff.x =surf_normal[0] ;
-                    coeff.y =surf_normal[1] ;
-                    coeff.z =surf_normal[2] ;
-                    coeff.intensity = s * pd2;
-                    if (s > 0.1) {
-                        laserCloudOri->push_back(pointOri);
-                        coeffSel->push_back(coeff);
-                    }
-                }
-            }
+        for (int j = 0; j < 5; j++) {
+          search_point = PclToEigenVector3f(
+              laserCloudSurfFromMapDS->points[pointSearchInd[j]]);
+          points.row(j) = (search_point);
         }
+
+        Eigen::Vector4f surf_normal = Eigen::Vector4f::Ones();
+        surf_normal.head<3>() = points.colPivHouseholderQr().solve(
+            -Eigen::Matrix<float, 5, 1>::Ones());
+        surf_normal /= surf_normal.head<3>().norm();
+        bool planeValid = true;
+        for (int j = 0; j < 5; j++) {
+          float dot_normal =
+              surf_normal.head<3>().transpose() *
+              PclToEigenVector3f(
+                  laserCloudSurfFromMapDS->points[pointSearchInd[j]]);
+          if (fabs(dot_normal + surf_normal[3]) > 0.2) {
+            planeValid = false;
+            break;
+          }
+        }
+        //         //cos theta =  A*B /|A||B|  ? 还有sqrt？
+        if (planeValid) {
+          Eigen::Vector3f point_sel = PclToEigenVector3f(pointSel);
+          float pd2 =
+              surf_normal.head<3>().transpose() * point_sel + surf_normal[3];
+          float s = 1 - 0.9 * fabs(pd2) / sqrt(point_sel.norm());
+          surf_normal *= s;
+          coeff.x = surf_normal[0];
+          coeff.y = surf_normal[1];
+          coeff.z = surf_normal[2];
+          coeff.intensity = s * pd2;
+          if (s > 0.1) {
+            laserCloudOri->push_back(pointOri);
+            coeffSel->push_back(coeff);
+          }
+        }
+      }
     }
-  Eigen::Matrix3f VectorHat(Eigen::Vector3f  v)
-  {
+  }
+  Eigen::Matrix3f VectorHat(Eigen::Vector3f v) {
     Eigen::Matrix3f hat;
-    hat << 0, -v[2], v[1],
-         v[2], 0, -v[0], 
-        -v[1], v[0], 0;
+    hat << 0, -v[2], v[1], v[2], 0, -v[0], -v[1], v[0], 0;
     return hat;
   }
-  bool LMOptimization(int iterCount){
-
-      //roll pitch yaw
-    //固定轴 Z X Y   yaw  roll  pitch 
+  bool LMOptimization(int iterCount) {
+    // roll pitch yaw
+    //固定轴 Z X Y   yaw  roll  pitch
     Eigen::Matrix3f rotation;
     Eigen::Matrix3f rotationx;
     Eigen::Matrix3f rotationy;
@@ -1344,23 +1333,21 @@ void surfOptimization(int iterCount){
         Eigen::AngleAxisf(transformTobeMapped[0], Eigen::Vector3f::UnitX());
     rotationz =
         Eigen::AngleAxisf(transformTobeMapped[2], Eigen::Vector3f::UnitZ());
-    rotation = rotationy*rotationx *rotationz;
+    rotation = rotationy * rotationx * rotationz;
 
+    int laserCloudSelNum = laserCloudOri->points.size();
+    if (laserCloudSelNum < 50) {
+      return false;
+    }
 
-        int laserCloudSelNum = laserCloudOri->points.size();
-        if (laserCloudSelNum < 50) {
-            return false;
-        }
-
-        cv::Mat matA(laserCloudSelNum, 6, CV_32F, cv::Scalar::all(0));
-        cv::Mat matAt(6, laserCloudSelNum, CV_32F, cv::Scalar::all(0));
-        cv::Mat matAtA(6, 6, CV_32F, cv::Scalar::all(0));
-        cv::Mat matB(laserCloudSelNum, 1, CV_32F, cv::Scalar::all(0));
-        cv::Mat matAtB(6, 1, CV_32F, cv::Scalar::all(0));
-        cv::Mat matX(6, 1, CV_32F, cv::Scalar::all(0));
-        for (int i = 0; i < laserCloudSelNum; i++) {
-
-                pointOri = laserCloudOri->points[i];
+    cv::Mat matA(laserCloudSelNum, 6, CV_32F, cv::Scalar::all(0));
+    cv::Mat matAt(6, laserCloudSelNum, CV_32F, cv::Scalar::all(0));
+    cv::Mat matAtA(6, 6, CV_32F, cv::Scalar::all(0));
+    cv::Mat matB(laserCloudSelNum, 1, CV_32F, cv::Scalar::all(0));
+    cv::Mat matAtB(6, 1, CV_32F, cv::Scalar::all(0));
+    cv::Mat matX(6, 1, CV_32F, cv::Scalar::all(0));
+    for (int i = 0; i < laserCloudSelNum; i++) {
+      pointOri = laserCloudOri->points[i];
       coeff = coeffSel->points[i];
       Eigen::Vector3f derived_coeff =
           Eigen::Vector3f{coeff.x, coeff.y, coeff.z};
@@ -1372,76 +1359,74 @@ void surfOptimization(int iterCount){
       auto derievd_theta = -VectorHat(rotated_point) * s;
 
       auto skew_derived_theta = derived_coeff.transpose() * derievd_theta;
-      
-            coeff = coeffSel->points[i];
 
-            matA.at<float>(i, 0) = skew_derived_theta[0];
-            matA.at<float>(i, 1) = skew_derived_theta[1];
-            matA.at<float>(i, 2) = skew_derived_theta[2];
-            matA.at<float>(i, 3) = coeff.x;
-            matA.at<float>(i, 4) = coeff.y;
-            matA.at<float>(i, 5) = coeff.z;
-            matB.at<float>(i, 0) = -coeff.intensity;
-        }
-        cv::transpose(matA, matAt);
-        matAtA = matAt * matA;
-        matAtB = matAt * matB;
-        cv::solve(matAtA, matAtB, matX, cv::DECOMP_QR);
+      coeff = coeffSel->points[i];
 
-        if (iterCount == 0) {
-            cv::Mat matE(1, 6, CV_32F, cv::Scalar::all(0));
-            cv::Mat matV(6, 6, CV_32F, cv::Scalar::all(0));
-            cv::Mat matV2(6, 6, CV_32F, cv::Scalar::all(0));
-
-            cv::eigen(matAtA, matE, matV);
-            matV.copyTo(matV2);
-
-            isDegenerate = false;
-            float eignThre[6] = {100, 100, 100, 100, 100, 100};
-            for (int i = 5; i >= 0; i--) {
-                if (matE.at<float>(0, i) < eignThre[i]) {
-                    for (int j = 0; j < 6; j++) {
-                        matV2.at<float>(i, j) = 0;
-                    }
-                    isDegenerate = true;
-                } else {
-                    break;
-                }
-            }
-            matP = matV.inv() * matV2;
-        }
-
-        if (isDegenerate) {
-            cv::Mat matX2(6, 1, CV_32F, cv::Scalar::all(0));
-            matX.copyTo(matX2);
-            matX = matP * matX2;
-        }
-
-        transformTobeMapped[0] += matX.at<float>(0, 0);
-        transformTobeMapped[1] += matX.at<float>(1, 0);
-        transformTobeMapped[2] += matX.at<float>(2, 0);
-        transformTobeMapped[3] += matX.at<float>(3, 0);
-        transformTobeMapped[4] += matX.at<float>(4, 0);
-        transformTobeMapped[5] += matX.at<float>(5, 0);
-
-        float deltaR = sqrt(
-                            pow(pcl::rad2deg(matX.at<float>(0, 0)), 2) +
-                            pow(pcl::rad2deg(matX.at<float>(1, 0)), 2) +
-                            pow(pcl::rad2deg(matX.at<float>(2, 0)), 2));
-        float deltaT = sqrt(
-                            pow(matX.at<float>(3, 0) * 100, 2) +
-                            pow(matX.at<float>(4, 0) * 100, 2) +
-                            pow(matX.at<float>(5, 0) * 100, 2));
-
-        if (deltaR < 0.05 && deltaT < 0.05) {
-            return true;
-        }
-        return false;
+      matA.at<float>(i, 0) = skew_derived_theta[0];
+      matA.at<float>(i, 1) = skew_derived_theta[1];
+      matA.at<float>(i, 2) = skew_derived_theta[2];
+      matA.at<float>(i, 3) = coeff.x;
+      matA.at<float>(i, 4) = coeff.y;
+      matA.at<float>(i, 5) = coeff.z;
+      matB.at<float>(i, 0) = -coeff.intensity;
     }
+    cv::transpose(matA, matAt);
+    matAtA = matAt * matA;
+    matAtB = matAt * matB;
+    cv::solve(matAtA, matAtB, matX, cv::DECOMP_QR);
+
+    if (iterCount == 0) {
+      cv::Mat matE(1, 6, CV_32F, cv::Scalar::all(0));
+      cv::Mat matV(6, 6, CV_32F, cv::Scalar::all(0));
+      cv::Mat matV2(6, 6, CV_32F, cv::Scalar::all(0));
+
+      cv::eigen(matAtA, matE, matV);
+      matV.copyTo(matV2);
+
+      isDegenerate = false;
+      float eignThre[6] = {100, 100, 100, 100, 100, 100};
+      for (int i = 5; i >= 0; i--) {
+        if (matE.at<float>(0, i) < eignThre[i]) {
+          for (int j = 0; j < 6; j++) {
+            matV2.at<float>(i, j) = 0;
+          }
+          isDegenerate = true;
+        } else {
+          break;
+        }
+      }
+      matP = matV.inv() * matV2;
+    }
+
+    if (isDegenerate) {
+      cv::Mat matX2(6, 1, CV_32F, cv::Scalar::all(0));
+      matX.copyTo(matX2);
+      matX = matP * matX2;
+    }
+
+    transformTobeMapped[0] += matX.at<float>(0, 0);
+    transformTobeMapped[1] += matX.at<float>(1, 0);
+    transformTobeMapped[2] += matX.at<float>(2, 0);
+    transformTobeMapped[3] += matX.at<float>(3, 0);
+    transformTobeMapped[4] += matX.at<float>(4, 0);
+    transformTobeMapped[5] += matX.at<float>(5, 0);
+
+    float deltaR = sqrt(pow(pcl::rad2deg(matX.at<float>(0, 0)), 2) +
+                        pow(pcl::rad2deg(matX.at<float>(1, 0)), 2) +
+                        pow(pcl::rad2deg(matX.at<float>(2, 0)), 2));
+    float deltaT = sqrt(pow(matX.at<float>(3, 0) * 100, 2) +
+                        pow(matX.at<float>(4, 0) * 100, 2) +
+                        pow(matX.at<float>(5, 0) * 100, 2));
+
+    if (deltaR < 0.05 && deltaT < 0.05) {
+      return true;
+    }
+    return false;
+  }
 
   // bool LMOptimization(int iterCount) {
   //   //roll pitch yaw
-  //   //固定轴 Z X Y   yaw  roll  pitch 
+  //   //固定轴 Z X Y   yaw  roll  pitch
   //   Eigen::Matrix3f rotation;
   //   Eigen::Matrix3f rotationx;
   //   Eigen::Matrix3f rotationy;
@@ -1453,7 +1438,6 @@ void surfOptimization(int iterCount){
   //   rotationz =
   //       Eigen::AngleAxisf(transformTobeMapped[2], Eigen::Vector3f::UnitZ());
   //   rotation = rotationy*rotationx *rotationz;
-
 
   //   int laserCloudSelNum = laserCloudOri->points.size();
   //   if (laserCloudSelNum < 50) {
@@ -1472,12 +1456,12 @@ void surfOptimization(int iterCount){
   //     coeff = coeffSel->points[i];
   //     Eigen::Vector3f derived_coeff =
   //         Eigen::Vector3f{coeff.x, coeff.y, coeff.z};
-  //     Eigen::Vector3f rotated_point = rotation * PclToEigenVector3f(pointOri);
-  //     Eigen::Matrix3f s;
-  //     s.col(2) = rotationy * rotationx * Eigen::Vector3f::UnitZ();
-  //     s.col(1) = Eigen::Vector3f::UnitY();
-  //     s.col(0) = rotationy * Eigen::Vector3f::UnitX();
-  //     auto derievd_theta = -VectorHat(rotated_point) * s;
+  //     Eigen::Vector3f rotated_point = rotation *
+  //     PclToEigenVector3f(pointOri); Eigen::Matrix3f s; s.col(2) = rotationy *
+  //     rotationx * Eigen::Vector3f::UnitZ(); s.col(1) =
+  //     Eigen::Vector3f::UnitY(); s.col(0) = rotationy *
+  //     Eigen::Vector3f::UnitX(); auto derievd_theta =
+  //     -VectorHat(rotated_point) * s;
 
   //     auto skew_derived_theta = derived_coeff.transpose() * derievd_theta;
   //     matA.at<float>(i, 0) = skew_derived_theta[0];
@@ -1760,12 +1744,7 @@ void surfOptimization(int iterCount){
     }
   }
 
-
-
-
-  void WriteMap()
-{
-
+  void WriteMap() {
     // save final point cloud
     pcl::io::savePCDFileASCII(fileDirectory + "finalCloud.pcd",
                               *globalMapKeyFramesDS);
@@ -1790,22 +1769,18 @@ void surfOptimization(int iterCount){
                                                &cloudKeyPoses6D->points[i]);
       *surfaceMapCloud += *transformPointCloud(outlierCloudKeyFrames[i],
                                                &cloudKeyPoses6D->points[i]);
-        std::cout<<"i"<<i<<std::endl;
+      std::cout << "i" << i << std::endl;
     }
 
-    PointTypePose  camere_to_map;
-    camere_to_map.yaw= 0;
-    camere_to_map.pitch= -1.560796327;
-    camere_to_map.roll= 1.560796327;
+    PointTypePose camere_to_map;
+    camere_to_map.yaw = 0;
+    camere_to_map.pitch = -1.560796327;
+    camere_to_map.roll = 1.560796327;
 
-
-   // for (int i = 0; i < cornerCloudKeyFrames.size(); i++) {
-      *cornerMapCloud = *transformPointCloud(cornerMapCloud,
-                                              &camere_to_map);
-      *surfaceMapCloud = *transformPointCloud(surfaceMapCloud,
-                                               &camere_to_map);
+    // for (int i = 0; i < cornerCloudKeyFrames.size(); i++) {
+    *cornerMapCloud = *transformPointCloud(cornerMapCloud, &camere_to_map);
+    *surfaceMapCloud = *transformPointCloud(surfaceMapCloud, &camere_to_map);
     //}
-
 
     downSizeFilterCorner.setInputCloud(cornerMapCloud);
     downSizeFilterCorner.filter(*cornerMapCloudDS);
@@ -1818,13 +1793,7 @@ void surfOptimization(int iterCount){
                               *surfaceMapCloudDS);
     pcl::io::savePCDFileASCII(fileDirectory + "trajectory.pcd",
                               *cloudKeyPoses3D);
-
-
-
-
-}
-
-
+  }
 };
 
 // #include <fstream>

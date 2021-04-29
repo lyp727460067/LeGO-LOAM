@@ -864,7 +864,7 @@ class FeatureAssociation {
       downSizeFilter.setInputCloud(surfPointsLessFlatScan);
       downSizeFilter.filter(*surfPointsLessFlatScanDS);
 
-      *surfPointsLessFlat += *surfPointsLessFlatScanDS                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 sLessFlatScanDS;
+      *surfPointsLessFlat += *surfPointsLessFlatScanDS;
     }
   }
 
@@ -1130,7 +1130,7 @@ class FeatureAssociation {
 
         if (pointSearchSqDis[0] < nearestFeatureSearchSqDist) {
           closestPointInd = pointSearchInd[0];
-          //intensity 存的是距离
+          // intensity 存的是距离
           int closestPointScan =
               int(laserCloudCornerLast->points[closestPointInd].intensity);
 

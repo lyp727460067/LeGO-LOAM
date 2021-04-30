@@ -902,13 +902,13 @@ class FeatureAssociation {
 
   void TransformToStart(PointType const *const pi, PointType *const po) {
     float s = 10 * (pi->intensity - int(pi->intensity));
-    //transformCur 两帧之间的增量  相当于速度值
+    // transformCur 两帧之间的增量  相当于速度值
     //  乘以时间 就是给下一针一个 初始位姿态
     // transformCur   是吧  当前的 点转到 这个相对位姿上的点
     //  要求的是 把 点转到相对于 这个速度相对的为姿上，所以求ni
     // transformend 是吧 转回去
 
-
+    //  yxz
 
     float rx = s * transformCur[0];
     float ry = s * transformCur[1];
@@ -1241,7 +1241,7 @@ class FeatureAssociation {
   void findCorrespondingSurfFeatures(int iterCount) {
     int surfPointsFlatNum = surfPointsFlat->points.size();
 
-    std::cout<<surfPointsFlat->points.size()<<std::endl;
+    std::cout << surfPointsFlat->points.size() << std::endl;
     for (int i = 0; i < surfPointsFlatNum; i++) {
       TransformToStart(&surfPointsFlat->points[i], &pointSel);
 
@@ -1373,95 +1373,48 @@ class FeatureAssociation {
     Eigen::Matrix3f rotationx;
     Eigen::Matrix3f rotationy;
     Eigen::Matrix3f rotationz;
-    rotationy =
-        Eigen::AngleAxisf(transformCur[1], Eigen::Vector3f::UnitY());
-    rotationx =
-        Eigen::AngleAxisf(transformCur[0], Eigen::Vector3f::UnitX());
-    rotationz =
-        Eigen::AngleAxisf(transformCur[2], Eigen::Vector3f::UnitZ());
+    rotationy = Eigen::AngleAxisf(transformCur[1], Eigen::Vector3f::UnitY());
+    rotationx = Eigen::AngleAxisf(transformCur[0], Eigen::Vector3f::UnitX());
+    rotationz = Eigen::AngleAxisf(transformCur[2], Eigen::Vector3f::UnitZ());
     rotation = rotationz * rotationx * rotationy;
     rotation.transposeInPlace();
-    Eigen::Vector3f translation{transformCur[3],transformCur[4],
+    Eigen::Vector3f translation{transformCur[3], transformCur[4],
                                 transformCur[5]};
 
-    float srx = sin(transformCur[0]);
-    float crx = cos(transformCur[0]);
-    float sry = sin(transformCur[1]);
-    float cry = cos(transformCur[1]);
-    float srz = sin(transformCur[2]);
-    float crz = cos(transformCur[2]);
-    float tx = transformCur[3];
-    float ty = transformCur[4];
-    float tz = transformCur[5];
+    Eigen::Matrix3f derived_x = -rotationy.transpose() *
+                                VectorHat(Eigen::Vector3f::UnitX()) *
+                                rotationx.transpose() * rotationz.transpose();
 
-    float a1 = crx * sry * srz;
-    float a2 = crx * crz * sry;
-    float a3 = srx * sry;
-    float a4 = tx * a1 - ty * a2 - tz * a3;
-    float a5 = srx * srz;
-    float a6 = crz * srx;
-    float a7 = ty * a6 - tz * crx - tx * a5;
-    float a8 = crx * cry * srz;
-    float a9 = crx * cry * crz;
-    float a10 = cry * srx;
-    float a11 = tz * a10 + ty * a9 - tx * a8;
+    Eigen::Matrix3f derived_z = -rotationy.transpose() * rotationx.transpose() *
+                                VectorHat(Eigen::Vector3f::UnitZ()) *
+                                rotationz.transpose();
+    Eigen::Matrix<float, 3, 6> derived_theta;
+    derived_theta.block<3, 3>(0, 0) = derived_x.transpose();
+    derived_theta.block<3, 3>(0, 3) = derived_z.transpose();
 
-    float b1 = -crz * sry - cry * srx * srz;
-    float b2 = cry * crz * srx - sry * srz;
-    float b5 = cry * crz - srx * sry * srz;
-    float b6 = cry * srz + crz * srx * sry;
-
-    float c1 = -b6;
-    float c2 = b5;
-    float c3 = tx * b6 - ty * b5;
-    float c4 = -crx * crz;
-    float c5 = crx * srz;
-    float c6 = ty * c5 + tx * -c4;
-    float c7 = b2;
-    float c8 = -b1;
-    float c9 = tx * -b2 - ty * -b1;
+    //
+    // std::cout<<"t"<<derived_y*translation<<std::endl;
+    // std::cout<<Eigen::Vector3f{a4,a7,a11};
 
     for (int i = 0; i < pointSelNum; i++) {
       pointOri = laserCloudOri->points[i];
       coeff = coeffSel->points[i];
-
-
       Eigen::Vector3f derived_coeff =
           Eigen::Vector3f{coeff.x, coeff.y, coeff.z};
-      Eigen::Vector3f rotated_point =
-          rotation * (PclToEigenVector3f(pointOri) - translation);
-       Eigen::Matrix3f s;
-      s.col(2) = rotationy.transpose() * rotationx.transpose() * Eigen::Vector3f::UnitZ();
-      s.col(1) = Eigen::Vector3f::UnitY();
-      s.col(0) = rotationy.transpose() * Eigen::Vector3f::UnitX();
-      auto derievd_theta = -VectorHat(rotated_point) * s;
-      auto skew_derived_theta = derived_coeff.transpose() * derievd_theta;
+      Eigen::Matrix<float, 1, 6> derived_p_theta =
+          (PclToEigenVector3f(pointOri) - translation).transpose() *
+          derived_theta;
+      // std::cout<<"derived_theta"<<derived_theta<<std::endl;
+      auto skew_derived_theta =
+          derived_coeff.transpose() *
+          Eigen::Map<Eigen::Matrix<float, 3, 2>>(derived_p_theta.data(), 3, 2);
       Eigen::Vector3f t_derive = -derived_coeff.transpose() * rotation;
 
-
-
-
-      float arx = (-a1 * pointOri.x + a2 * pointOri.y + a3 * pointOri.z + a4) *
-                      coeff.x +
-                  (a5 * pointOri.x - a6 * pointOri.y + crx * pointOri.z + a7) *
-                      coeff.y +
-                  (a8 * pointOri.x - a9 * pointOri.y - a10 * pointOri.z + a11) *
-                      coeff.z;
-
-      float arz = (c1 * pointOri.x + c2 * pointOri.y + c3) * coeff.x +
-                  (c4 * pointOri.x - c5 * pointOri.y + c6) * coeff.y +
-                  (c7 * pointOri.x + c8 * pointOri.y + c9) * coeff.z;
-
-      float aty = -b6 * coeff.x + c4 * coeff.y + b2 * coeff.z;
-
       float d2 = coeff.intensity;
-      std::cout << "t_derive" << t_derive << std::endl;
-      std::cout << "skew_derived_theta" << skew_derived_theta << std::endl;
-      std::cout << "arx" << arx << "ary" << arz << "aty" << aty <<std::endl;
 
-      matA.at<float>(i, 0) = arx;
-      matA.at<float>(i, 1) = arz;
-      matA.at<float>(i, 2) = aty;
+      matA.at<float>(i, 0) = skew_derived_theta[0];
+      matA.at<float>(i, 1) = skew_derived_theta[1];
+      matA.at<float>(i, 2) = t_derive[1];
       matB.at<float>(i, 0) = -0.05 * d2;
     }
 
@@ -1522,16 +1475,17 @@ class FeatureAssociation {
     return hat;
   }
 
-   Eigen::Vector3f PclToEigenVector3f(const PointType& point) {
+  Eigen::Vector3f PclToEigenVector3f(const PointType &point) {
     return {point.x, point.y, point.z};
   }
 
   bool calculateTransformationCorner(int iterCount) {
     int pointSelNum = laserCloudOri->points.size();
+
     Eigen::Matrix3f rotation;
-    rotation  =  Eigen::AngleAxisf(transformCur[1], Eigen::Vector3f::UnitY())*
-     Eigen::AngleAxisf(transformCur[0], Eigen::Vector3f::UnitX())*
-     Eigen::AngleAxisf(transformCur[2], Eigen::Vector3f::UnitZ());
+    rotation = Eigen::AngleAxisf(transformCur[2], Eigen::Vector3f::UnitY()) *
+               Eigen::AngleAxisf(transformCur[0], Eigen::Vector3f::UnitX()) *
+               Eigen::AngleAxisf(transformCur[1], Eigen::Vector3f::UnitZ());
     rotation.transposeInPlace();
     Eigen::Vector3f translation{transformCur[3], transformCur[4],
                                 transformCur[5]};
@@ -1580,7 +1534,7 @@ class FeatureAssociation {
           for (int j = 0; j < 3; j++) {
             matV2.at<float>(i, j) = 0;
           }
-         isDegenerate = true;
+          isDegenerate = true;
         } else {
           break;
         }
@@ -1622,31 +1576,26 @@ class FeatureAssociation {
     cv::Mat matAtB(6, 1, CV_32F, cv::Scalar::all(0));
     cv::Mat matX(6, 1, CV_32F, cv::Scalar::all(0));
 
-
     Eigen::Matrix3f rotation;
     Eigen::Matrix3f rotationx;
     Eigen::Matrix3f rotationy;
     Eigen::Matrix3f rotationz;
-    rotationy =
-        Eigen::AngleAxisf(transformCur[1], Eigen::Vector3f::UnitY());
-    rotationx =
-        Eigen::AngleAxisf(transformCur[0], Eigen::Vector3f::UnitX());
-    rotationz =
-        Eigen::AngleAxisf(transformCur[2], Eigen::Vector3f::UnitZ());
+    rotationy = Eigen::AngleAxisf(transformCur[1], Eigen::Vector3f::UnitY());
+    rotationx = Eigen::AngleAxisf(transformCur[0], Eigen::Vector3f::UnitX());
+    rotationz = Eigen::AngleAxisf(transformCur[2], Eigen::Vector3f::UnitZ());
     rotation = rotationy * rotationx * rotationz;
     rotation.transposeInPlace();
     Eigen::Vector3f translation{transformCur[3], transformCur[4],
                                 transformCur[5]};
 
-
     for (int i = 0; i < pointSelNum; i++) {
       pointOri = laserCloudOri->points[i];
       coeff = coeffSel->points[i];
 
-
-     Eigen::Vector3f derived_coeff =
+      Eigen::Vector3f derived_coeff =
           Eigen::Vector3f{coeff.x, coeff.y, coeff.z};
-      Eigen::Vector3f rotated_point = rotation * (PclToEigenVector3f(pointOri )-translation);
+      Eigen::Vector3f rotated_point =
+          rotation * (PclToEigenVector3f(pointOri) - translation);
       Eigen::Matrix3f s;
       s.col(2) = rotationy * rotationx * Eigen::Vector3f::UnitZ();
       s.col(1) = Eigen::Vector3f::UnitY();
@@ -1655,17 +1604,18 @@ class FeatureAssociation {
       auto skew_derived_theta = derived_coeff.transpose() * derievd_theta;
       Eigen::Vector3f t_derive = -derived_coeff.transpose() * rotation;
 
-
-
       float d2 = coeff.intensity;
 
-            matA.at<float>(i, 0) = skew_derived_theta[0];
+      matA.at<float>(i, 0) = skew_derived_theta[0];
       matA.at<float>(i, 1) = skew_derived_theta[1];
       matA.at<float>(i, 2) = skew_derived_theta[2];
 
-      matA.at<float>(i, 3) = t_derive[0];;
-      matA.at<float>(i, 4) = t_derive[1];;
-      matA.at<float>(i, 5) = t_derive[2];;
+      matA.at<float>(i, 3) = t_derive[0];
+      ;
+      matA.at<float>(i, 4) = t_derive[1];
+      ;
+      matA.at<float>(i, 5) = t_derive[2];
+      ;
       matB.at<float>(i, 0) = -0.05 * d2;
     }
 
@@ -1796,7 +1746,8 @@ class FeatureAssociation {
       coeffSel->clear();
 
       findCorrespondingSurfFeatures(iterCount1);
-      std::cout<<"laserCloudOri.size()"<<laserCloudOri->points.size()<<std::endl;
+      std::cout << "laserCloudOri.size()" << laserCloudOri->points.size()
+                << std::endl;
       if (laserCloudOri->points.size() < 10) continue;
       if (calculateTransformationSurf(iterCount1) == false) break;
     }
